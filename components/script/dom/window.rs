@@ -864,12 +864,13 @@ impl<'a, T: Reflectable> ScriptHelpers for &'a T {
                 let _ac = JSAutoCompartment::new(cx, globalhandle.get());
                 let options = CompileOptionsWrapper::new(cx, filename.as_ptr(), 0);
                 unsafe {
+                    /*
                     if !Evaluate2(cx, options.ptr, code.as_ptr(),
                                   code.len() as libc::size_t,
                                   rval) {
                         debug!("error evaluating JS string");
                         report_pending_exception(cx, globalhandle.get());
-                    }
+                    }*/
                 }
             }
         )
@@ -1025,6 +1026,11 @@ impl Window {
         }
 
         let document = self.Document();
+        if document.ReadyState() != DocumentReadyState::Complete {
+            println!("Document not ready - skipping reflow");
+            return;
+        }
+
         let stylesheets_changed = document.get_and_reset_stylesheets_changed_since_reflow();
 
         // Send new document and relevant styles to layout.
@@ -1083,7 +1089,8 @@ impl Window {
 
             // If window_size is `None`, we don't reflow, so the document stays dirty.
             // Otherwise, we shouldn't need a reflow immediately after a reflow.
-            assert!(!self.Document().needs_reflow() ||
+            assert!(self.Document().ReadyState() != DocumentReadyState::Complete ||
+                    !self.Document().needs_reflow() ||
                     self.window_size.get().is_none() ||
                     self.suppress_reflow.get());
         } else {

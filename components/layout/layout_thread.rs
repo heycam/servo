@@ -76,6 +76,7 @@ use style::properties::ComputedValues;
 use style::selector_matching::USER_OR_USER_AGENT_STYLESHEETS;
 use style::servo::{SharedStyleContext, Stylesheet, Stylist};
 use style::stylesheets::CSSRuleIteratorExt;
+use time::precise_time_s;
 use traversal::RecalcStyleAndConstructFlows;
 use url::Url;
 use util::geometry::MAX_RECT;
@@ -1124,6 +1125,8 @@ impl LayoutThread {
                     self.time_profiler_chan.clone(),
                     || {
                 // Perform CSS selector matching and flow construction.
+                println!("Doing style recalc...");
+                let start = precise_time_s();
                 match self.parallel_traversal {
                     None => {
                         sequential::traverse_dom::<ServoLayoutNode, RecalcStyleAndConstructFlows>(
@@ -1134,6 +1137,9 @@ impl LayoutThread {
                             node, &shared_layout_context, traversal);
                     }
                 }
+                let end = precise_time_s();
+                println!("Style took {} ms", (end - start) * 1000.0);
+                panic!("Stubbed out flow construction, so can't go on");
             });
 
             // TODO(pcwalton): Measure energy usage of text shaping, perhaps?

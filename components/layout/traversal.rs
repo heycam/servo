@@ -66,7 +66,7 @@ impl<'lc, 'ln> DomTraversalContext<ServoLayoutNode<'ln>> for RecalcStyleAndConst
     }
 
     fn process_preorder(&self, node: ServoLayoutNode<'ln>) { recalc_style_at(&self.context, self.root, node); }
-    fn process_postorder(&self, node: ServoLayoutNode<'ln>) { construct_flows_at(&self.context, self.root, node); }
+    fn process_postorder(&self, node: ServoLayoutNode<'ln>) { /*construct_flows_at(&self.context, self.root, node);*/ }
 }
 
 /// A bottom-up, parallelizable traversal.
