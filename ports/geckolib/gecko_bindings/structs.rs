@@ -188,8 +188,6 @@ pub const NS_ERROR_MODULE_BASE_OFFSET: ::std::os::raw::c_uint = 69;
 pub const MOZ_STRING_WITH_OBSOLETE_API: ::std::os::raw::c_uint = 1;
 pub const NSID_LENGTH: ::std::os::raw::c_uint = 39;
 pub const NS_NUMBER_OF_FLAGS_IN_REFCNT: ::std::os::raw::c_uint = 2;
-pub const _STL_PAIR_H: ::std::os::raw::c_uint = 1;
-pub const _GLIBCXX_UTILITY: ::std::os::raw::c_uint = 1;
 pub const TWIPS_PER_POINT_INT: ::std::os::raw::c_uint = 20;
 pub const POINTS_PER_INCH_INT: ::std::os::raw::c_uint = 72;
 pub const NS_FONT_VARIANT_NORMAL: ::std::os::raw::c_uint = 0;
@@ -337,6 +335,8 @@ pub const NS_STYLE_IMAGELAYER_REPEAT_NO_REPEAT: ::std::os::raw::c_uint = 0;
 pub const NS_STYLE_IMAGELAYER_REPEAT_REPEAT_X: ::std::os::raw::c_uint = 1;
 pub const NS_STYLE_IMAGELAYER_REPEAT_REPEAT_Y: ::std::os::raw::c_uint = 2;
 pub const NS_STYLE_IMAGELAYER_REPEAT_REPEAT: ::std::os::raw::c_uint = 3;
+pub const NS_STYLE_IMAGELAYER_REPEAT_SPACE: ::std::os::raw::c_uint = 4;
+pub const NS_STYLE_IMAGELAYER_REPEAT_ROUND: ::std::os::raw::c_uint = 5;
 pub const NS_STYLE_IMAGELAYER_SIZE_CONTAIN: ::std::os::raw::c_uint = 0;
 pub const NS_STYLE_IMAGELAYER_SIZE_COVER: ::std::os::raw::c_uint = 1;
 pub const NS_STYLE_MASK_MODE_ALPHA: ::std::os::raw::c_uint = 0;
@@ -748,8 +748,8 @@ pub const NS_STYLE_WHITESPACE_PRE_SPACE: ::std::os::raw::c_uint = 5;
 pub const NS_STYLE_WORDBREAK_NORMAL: ::std::os::raw::c_uint = 0;
 pub const NS_STYLE_WORDBREAK_BREAK_ALL: ::std::os::raw::c_uint = 1;
 pub const NS_STYLE_WORDBREAK_KEEP_ALL: ::std::os::raw::c_uint = 2;
-pub const NS_STYLE_WORDWRAP_NORMAL: ::std::os::raw::c_uint = 0;
-pub const NS_STYLE_WORDWRAP_BREAK_WORD: ::std::os::raw::c_uint = 1;
+pub const NS_STYLE_OVERFLOWWRAP_NORMAL: ::std::os::raw::c_uint = 0;
+pub const NS_STYLE_OVERFLOWWRAP_BREAK_WORD: ::std::os::raw::c_uint = 1;
 pub const NS_STYLE_HYPHENS_NONE: ::std::os::raw::c_uint = 0;
 pub const NS_STYLE_HYPHENS_MANUAL: ::std::os::raw::c_uint = 1;
 pub const NS_STYLE_HYPHENS_AUTO: ::std::os::raw::c_uint = 2;
@@ -1486,8 +1486,7 @@ pub enum nsresult {
     NS_ERROR_DOM_BLUETOOTH_AUTH_REJECTED = -2140536821,
     NS_ERROR_SIGNED_APP_MANIFEST_INVALID = -2140471295,
     NS_ERROR_DOM_ANIM_MISSING_PROPS_ERR = -2140405759,
-    NS_ERROR_DOM_ANIM_NO_TIMELINE_ERR = -2140405758,
-    NS_ERROR_DOM_ANIM_NO_EFFECT_ERR = -2140405757,
+    NS_ERROR_DOM_ANIM_NO_EFFECT_ERR = -2140405758,
     NS_ERROR_DOM_PUSH_INVALID_REGISTRATION_ERR = -2140340223,
     NS_ERROR_DOM_PUSH_DENIED_ERR = -2140340222,
     NS_ERROR_DOM_PUSH_ABORT_ERR = -2140340221,
@@ -2683,7 +2682,7 @@ pub type gfxFloat = f64;
  *
  * eNoBreak       The line has no break opportunities
  * eWordWrapBreak The line has a break opportunity only within a word. With
- *                word-wrap: break-word we will break at this point only if
+ *                overflow-wrap|word-wrap: break-word we will break at this point only if
  *                there are no other break opportunities in the line.
  * eNormalBreak   The line has a break opportunity determined by the standard
  *                line-breaking algorithm.
@@ -2752,6 +2751,16 @@ impl ::std::clone::Clone for piecewise_construct_t {
 pub struct pair<_T1, _T2> {
     pub first: _T1,
     pub second: _T2,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __make_pair_return_impl<_Tp> {
+    pub _phantom0: ::std::marker::PhantomData<_Tp>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __make_pair_return<_Tp> {
+    pub _phantom0: ::std::marker::PhantomData<_Tp>,
 }
 pub type Float = f32;
 #[repr(i8)]
@@ -3008,16 +3017,6 @@ pub enum SideBits {
     eSideBitsTopBottom = 5,
     eSideBitsLeftRight = 10,
     eSideBitsAll = 15,
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct tuple_size<_Tp> {
-    pub _phantom0: ::std::marker::PhantomData<_Tp>,
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct tuple_element<_Tp> {
-    pub _phantom0: ::std::marker::PhantomData<_Tp>,
 }
 pub type nscoord = i32;
 #[repr(C)]
@@ -3287,7 +3286,7 @@ pub const eCSSProperty_all: nsCSSProperty =
     nsCSSProperty::eCSSProperty_COUNT_no_shorthands;
 pub const eCSSProperty_COUNT_DUMMY2: nsCSSProperty =
     nsCSSProperty::eCSSProperty_transition;
-pub const eCSSPropertyAlias_MozTransformOrigin: nsCSSProperty =
+pub const eCSSPropertyAlias_WordWrap: nsCSSProperty =
     nsCSSProperty::eCSSProperty_COUNT;
 pub const eCSSProperty_COUNT_DUMMY3: nsCSSProperty =
     nsCSSProperty::eCSSPropertyAlias_WebkitUserSelect;
@@ -3599,7 +3598,7 @@ pub enum nsCSSProperty {
     eCSSProperty__moz_window_shadow = 299,
     eCSSProperty_word_break = 300,
     eCSSProperty_word_spacing = 301,
-    eCSSProperty_word_wrap = 302,
+    eCSSProperty_overflow_wrap = 302,
     eCSSProperty_writing_mode = 303,
     eCSSProperty_z_index = 304,
     eCSSProperty_COUNT_no_shorthands = 305,
@@ -3646,86 +3645,99 @@ pub enum nsCSSProperty {
     eCSSProperty__moz_transform = 346,
     eCSSProperty_transition = 347,
     eCSSProperty_COUNT = 348,
-    eCSSPropertyAlias_MozPerspectiveOrigin = 349,
-    eCSSPropertyAlias_MozPerspective = 350,
-    eCSSPropertyAlias_MozTransformStyle = 351,
-    eCSSPropertyAlias_MozBackfaceVisibility = 352,
-    eCSSPropertyAlias_MozBorderImage = 353,
-    eCSSPropertyAlias_MozTransition = 354,
-    eCSSPropertyAlias_MozTransitionDelay = 355,
-    eCSSPropertyAlias_MozTransitionDuration = 356,
-    eCSSPropertyAlias_MozTransitionProperty = 357,
-    eCSSPropertyAlias_MozTransitionTimingFunction = 358,
-    eCSSPropertyAlias_MozAnimation = 359,
-    eCSSPropertyAlias_MozAnimationDelay = 360,
-    eCSSPropertyAlias_MozAnimationDirection = 361,
-    eCSSPropertyAlias_MozAnimationDuration = 362,
-    eCSSPropertyAlias_MozAnimationFillMode = 363,
-    eCSSPropertyAlias_MozAnimationIterationCount = 364,
-    eCSSPropertyAlias_MozAnimationName = 365,
-    eCSSPropertyAlias_MozAnimationPlayState = 366,
-    eCSSPropertyAlias_MozAnimationTimingFunction = 367,
-    eCSSPropertyAlias_MozBoxSizing = 368,
-    eCSSPropertyAlias_MozFontFeatureSettings = 369,
-    eCSSPropertyAlias_MozFontLanguageOverride = 370,
-    eCSSPropertyAlias_MozPaddingEnd = 371,
-    eCSSPropertyAlias_MozPaddingStart = 372,
-    eCSSPropertyAlias_MozMarginEnd = 373,
-    eCSSPropertyAlias_MozMarginStart = 374,
-    eCSSPropertyAlias_MozBorderEnd = 375,
-    eCSSPropertyAlias_MozBorderEndColor = 376,
-    eCSSPropertyAlias_MozBorderEndStyle = 377,
-    eCSSPropertyAlias_MozBorderEndWidth = 378,
-    eCSSPropertyAlias_MozBorderStart = 379,
-    eCSSPropertyAlias_MozBorderStartColor = 380,
-    eCSSPropertyAlias_MozBorderStartStyle = 381,
-    eCSSPropertyAlias_MozBorderStartWidth = 382,
-    eCSSPropertyAlias_MozHyphens = 383,
-    eCSSPropertyAlias_WebkitAnimation = 384,
-    eCSSPropertyAlias_WebkitAnimationDelay = 385,
-    eCSSPropertyAlias_WebkitAnimationDirection = 386,
-    eCSSPropertyAlias_WebkitAnimationDuration = 387,
-    eCSSPropertyAlias_WebkitAnimationFillMode = 388,
-    eCSSPropertyAlias_WebkitAnimationIterationCount = 389,
-    eCSSPropertyAlias_WebkitAnimationName = 390,
-    eCSSPropertyAlias_WebkitAnimationPlayState = 391,
-    eCSSPropertyAlias_WebkitAnimationTimingFunction = 392,
-    eCSSPropertyAlias_WebkitFilter = 393,
-    eCSSPropertyAlias_WebkitTextSizeAdjust = 394,
-    eCSSPropertyAlias_WebkitTransform = 395,
-    eCSSPropertyAlias_WebkitTransformOrigin = 396,
-    eCSSPropertyAlias_WebkitTransformStyle = 397,
-    eCSSPropertyAlias_WebkitBackfaceVisibility = 398,
-    eCSSPropertyAlias_WebkitPerspective = 399,
-    eCSSPropertyAlias_WebkitPerspectiveOrigin = 400,
-    eCSSPropertyAlias_WebkitTransition = 401,
-    eCSSPropertyAlias_WebkitTransitionDelay = 402,
-    eCSSPropertyAlias_WebkitTransitionDuration = 403,
-    eCSSPropertyAlias_WebkitTransitionProperty = 404,
-    eCSSPropertyAlias_WebkitTransitionTimingFunction = 405,
-    eCSSPropertyAlias_WebkitBorderRadius = 406,
-    eCSSPropertyAlias_WebkitBorderTopLeftRadius = 407,
-    eCSSPropertyAlias_WebkitBorderTopRightRadius = 408,
-    eCSSPropertyAlias_WebkitBorderBottomLeftRadius = 409,
-    eCSSPropertyAlias_WebkitBorderBottomRightRadius = 410,
-    eCSSPropertyAlias_WebkitBackgroundClip = 411,
-    eCSSPropertyAlias_WebkitBackgroundOrigin = 412,
-    eCSSPropertyAlias_WebkitBackgroundSize = 413,
-    eCSSPropertyAlias_WebkitBorderImage = 414,
-    eCSSPropertyAlias_WebkitBoxShadow = 415,
-    eCSSPropertyAlias_WebkitBoxSizing = 416,
-    eCSSPropertyAlias_WebkitBoxFlex = 417,
-    eCSSPropertyAlias_WebkitBoxOrdinalGroup = 418,
-    eCSSPropertyAlias_WebkitBoxOrient = 419,
-    eCSSPropertyAlias_WebkitBoxDirection = 420,
-    eCSSPropertyAlias_WebkitBoxAlign = 421,
-    eCSSPropertyAlias_WebkitBoxPack = 422,
-    eCSSPropertyAlias_WebkitUserSelect = 423,
-    eCSSProperty_COUNT_with_aliases = 424,
-    eCSSPropertyExtra_all_properties = 425,
-    eCSSPropertyExtra_x_none_value = 426,
-    eCSSPropertyExtra_x_auto_value = 427,
-    eCSSPropertyExtra_variable = 428,
+    eCSSPropertyAlias_MozTransformOrigin = 349,
+    eCSSPropertyAlias_MozPerspectiveOrigin = 350,
+    eCSSPropertyAlias_MozPerspective = 351,
+    eCSSPropertyAlias_MozTransformStyle = 352,
+    eCSSPropertyAlias_MozBackfaceVisibility = 353,
+    eCSSPropertyAlias_MozBorderImage = 354,
+    eCSSPropertyAlias_MozTransition = 355,
+    eCSSPropertyAlias_MozTransitionDelay = 356,
+    eCSSPropertyAlias_MozTransitionDuration = 357,
+    eCSSPropertyAlias_MozTransitionProperty = 358,
+    eCSSPropertyAlias_MozTransitionTimingFunction = 359,
+    eCSSPropertyAlias_MozAnimation = 360,
+    eCSSPropertyAlias_MozAnimationDelay = 361,
+    eCSSPropertyAlias_MozAnimationDirection = 362,
+    eCSSPropertyAlias_MozAnimationDuration = 363,
+    eCSSPropertyAlias_MozAnimationFillMode = 364,
+    eCSSPropertyAlias_MozAnimationIterationCount = 365,
+    eCSSPropertyAlias_MozAnimationName = 366,
+    eCSSPropertyAlias_MozAnimationPlayState = 367,
+    eCSSPropertyAlias_MozAnimationTimingFunction = 368,
+    eCSSPropertyAlias_MozBoxSizing = 369,
+    eCSSPropertyAlias_MozFontFeatureSettings = 370,
+    eCSSPropertyAlias_MozFontLanguageOverride = 371,
+    eCSSPropertyAlias_MozPaddingEnd = 372,
+    eCSSPropertyAlias_MozPaddingStart = 373,
+    eCSSPropertyAlias_MozMarginEnd = 374,
+    eCSSPropertyAlias_MozMarginStart = 375,
+    eCSSPropertyAlias_MozBorderEnd = 376,
+    eCSSPropertyAlias_MozBorderEndColor = 377,
+    eCSSPropertyAlias_MozBorderEndStyle = 378,
+    eCSSPropertyAlias_MozBorderEndWidth = 379,
+    eCSSPropertyAlias_MozBorderStart = 380,
+    eCSSPropertyAlias_MozBorderStartColor = 381,
+    eCSSPropertyAlias_MozBorderStartStyle = 382,
+    eCSSPropertyAlias_MozBorderStartWidth = 383,
+    eCSSPropertyAlias_MozHyphens = 384,
+    eCSSPropertyAlias_WebkitAnimation = 385,
+    eCSSPropertyAlias_WebkitAnimationDelay = 386,
+    eCSSPropertyAlias_WebkitAnimationDirection = 387,
+    eCSSPropertyAlias_WebkitAnimationDuration = 388,
+    eCSSPropertyAlias_WebkitAnimationFillMode = 389,
+    eCSSPropertyAlias_WebkitAnimationIterationCount = 390,
+    eCSSPropertyAlias_WebkitAnimationName = 391,
+    eCSSPropertyAlias_WebkitAnimationPlayState = 392,
+    eCSSPropertyAlias_WebkitAnimationTimingFunction = 393,
+    eCSSPropertyAlias_WebkitFilter = 394,
+    eCSSPropertyAlias_WebkitTextSizeAdjust = 395,
+    eCSSPropertyAlias_WebkitTransform = 396,
+    eCSSPropertyAlias_WebkitTransformOrigin = 397,
+    eCSSPropertyAlias_WebkitTransformStyle = 398,
+    eCSSPropertyAlias_WebkitBackfaceVisibility = 399,
+    eCSSPropertyAlias_WebkitPerspective = 400,
+    eCSSPropertyAlias_WebkitPerspectiveOrigin = 401,
+    eCSSPropertyAlias_WebkitTransition = 402,
+    eCSSPropertyAlias_WebkitTransitionDelay = 403,
+    eCSSPropertyAlias_WebkitTransitionDuration = 404,
+    eCSSPropertyAlias_WebkitTransitionProperty = 405,
+    eCSSPropertyAlias_WebkitTransitionTimingFunction = 406,
+    eCSSPropertyAlias_WebkitBorderRadius = 407,
+    eCSSPropertyAlias_WebkitBorderTopLeftRadius = 408,
+    eCSSPropertyAlias_WebkitBorderTopRightRadius = 409,
+    eCSSPropertyAlias_WebkitBorderBottomLeftRadius = 410,
+    eCSSPropertyAlias_WebkitBorderBottomRightRadius = 411,
+    eCSSPropertyAlias_WebkitBackgroundClip = 412,
+    eCSSPropertyAlias_WebkitBackgroundOrigin = 413,
+    eCSSPropertyAlias_WebkitBackgroundSize = 414,
+    eCSSPropertyAlias_WebkitBorderImage = 415,
+    eCSSPropertyAlias_WebkitBoxShadow = 416,
+    eCSSPropertyAlias_WebkitBoxSizing = 417,
+    eCSSPropertyAlias_WebkitBoxFlex = 418,
+    eCSSPropertyAlias_WebkitBoxOrdinalGroup = 419,
+    eCSSPropertyAlias_WebkitBoxOrient = 420,
+    eCSSPropertyAlias_WebkitBoxDirection = 421,
+    eCSSPropertyAlias_WebkitBoxAlign = 422,
+    eCSSPropertyAlias_WebkitBoxPack = 423,
+    eCSSPropertyAlias_WebkitFlexDirection = 424,
+    eCSSPropertyAlias_WebkitFlexWrap = 425,
+    eCSSPropertyAlias_WebkitFlexFlow = 426,
+    eCSSPropertyAlias_WebkitOrder = 427,
+    eCSSPropertyAlias_WebkitFlex = 428,
+    eCSSPropertyAlias_WebkitFlexGrow = 429,
+    eCSSPropertyAlias_WebkitFlexShrink = 430,
+    eCSSPropertyAlias_WebkitFlexBasis = 431,
+    eCSSPropertyAlias_WebkitJustifyContent = 432,
+    eCSSPropertyAlias_WebkitAlignItems = 433,
+    eCSSPropertyAlias_WebkitAlignSelf = 434,
+    eCSSPropertyAlias_WebkitAlignContent = 435,
+    eCSSPropertyAlias_WebkitUserSelect = 436,
+    eCSSProperty_COUNT_with_aliases = 437,
+    eCSSPropertyExtra_all_properties = 438,
+    eCSSPropertyExtra_x_none_value = 439,
+    eCSSPropertyExtra_x_auto_value = 440,
+    eCSSPropertyExtra_variable = 441,
 }
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -3991,7 +4003,8 @@ pub enum nsCSSUnit {
     eCSSUnit_Millimeter = 902,
     eCSSUnit_Centimeter = 903,
     eCSSUnit_Pica = 904,
-    eCSSUnit_Pixel = 905,
+    eCSSUnit_Quarter = 905,
+    eCSSUnit_Pixel = 906,
     eCSSUnit_Degree = 1000,
     eCSSUnit_Grad = 1001,
     eCSSUnit_Radian = 1002,
@@ -5125,13 +5138,12 @@ fn bindgen_test_layout_nsStyleOutline() {
 #[repr(C)]
 #[derive(Debug)]
 pub struct nsStyleQuoteValues {
-    pub mRefCnt: nsAutoRefCnt,
-    pub _mOwningThread: nsAutoOwningThread,
+    pub mRefCnt: ThreadSafeAutoRefCnt,
     pub mQuotePairs: nsTArray<pair<nsString, nsString>>,
 }
 #[test]
 fn bindgen_test_layout_nsStyleQuoteValues() {
-    assert_eq!(::std::mem::size_of::<nsStyleQuoteValues>() , 24usize);
+    assert_eq!(::std::mem::size_of::<nsStyleQuoteValues>() , 16usize);
     assert_eq!(::std::mem::align_of::<nsStyleQuoteValues>() , 8usize);
 }
 #[repr(C)]
@@ -5227,12 +5239,12 @@ pub struct nsStylePosition {
     pub mGridColumnEnd: nsStyleGridLine,
     pub mGridRowStart: nsStyleGridLine,
     pub mGridRowEnd: nsStyleGridLine,
-    pub mGridColumnGap: nscoord,
-    pub mGridRowGap: nscoord,
+    pub mGridColumnGap: nsStyleCoord,
+    pub mGridRowGap: nsStyleCoord,
 }
 #[test]
 fn bindgen_test_layout_nsStylePosition() {
-    assert_eq!(::std::mem::size_of::<nsStylePosition>() , 496usize);
+    assert_eq!(::std::mem::size_of::<nsStylePosition>() , 520usize);
     assert_eq!(::std::mem::align_of::<nsStylePosition>() , 8usize);
 }
 #[repr(C)]
@@ -5281,7 +5293,7 @@ pub struct nsStyleText {
     pub mTextTransform: u8,
     pub mWhiteSpace: u8,
     pub mWordBreak: u8,
-    pub mWordWrap: u8,
+    pub mOverflowWrap: u8,
     pub mHyphens: u8,
     pub mRubyAlign: u8,
     pub mRubyPosition: u8,
