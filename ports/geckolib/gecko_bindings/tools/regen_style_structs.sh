@@ -44,14 +44,15 @@ export RUST_BACKTRACE=1
   -allow-unknown-types                                              \
   "-I$DIST_INCLUDE" "-I$DIST_INCLUDE/nspr"                          \
   "-I$1/../nsprpub/pr/include"                                      \
+  "-I/usr/lib/llvm-3.8/lib/clang/3.8.1/include"    \
   $PLATFORM_DEPENDENT_DEFINES                                       \
   -ignore-functions                                                 \
   -no-bitfield-methods                                              \
   -no-type-renaming                                                 \
   -DMOZILLA_INTERNAL_API                                            \
   -DMOZ_STYLO_BINDINGS=1                                            \
-  -DJS_DEBUG=1                                                      \
-  -DDEBUG=1 -DTRACING=1 -DOS_POSIX=1                                \
+  -DxxxJS_DEBUG=1                                                      \
+  -DxxxDEBUG=1 -DTRACING=1 -DOS_POSIX=1                                \
   -DIMPL_LIBXUL                                                     \
   -include "nsThemeConstants.h"                                     \
   -match "RefCountType.h"                                           \
