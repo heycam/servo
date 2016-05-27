@@ -9,6 +9,7 @@ use num_cpus;
 use selector_impl::{Stylist, Stylesheet, SharedStyleContext};
 use std::cmp;
 use std::collections::HashMap;
+use std::env;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use style::animation::Animation;
@@ -38,6 +39,8 @@ pub struct PerDocumentStyleData {
 
     // FIXME(bholley): This shouldn't be per-document.
     pub work_queue: WorkQueue<SharedStyleContext, WorkQueueData>,
+
+    pub serial: bool,
 }
 
 impl PerDocumentStyleData {
@@ -47,7 +50,11 @@ impl PerDocumentStyleData {
         let device = Device::new(MediaType::Screen, window_size);
 
         let (new_anims_sender, new_anims_receiver) = channel();
-        let num_threads = cmp::max(num_cpus::get() * 3 / 4, 1);
+        let num_threads = match env::var("STYLO_THREADS").map(|s| s.parse::<usize>().expect("invalid STYLE_THREADS")) {
+            Ok(num) => num,
+            _ => cmp::max(num_cpus::get() * 3 / 4, 1),
+        };
+        println!("num_threads = {}", num_threads);
 
         PerDocumentStyleData {
             stylist: Arc::new(Stylist::new(device)),
@@ -58,6 +65,7 @@ impl PerDocumentStyleData {
             running_animations: Arc::new(RwLock::new(HashMap::new())),
             expired_animations: Arc::new(RwLock::new(HashMap::new())),
             work_queue: WorkQueue::new("StyleWorker", thread_state::LAYOUT, num_threads),
+            serial: num_threads == 1,
         }
     }
 
