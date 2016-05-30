@@ -27,6 +27,7 @@ use structs::nsStyleEffects;
 use structs::SheetParsingMode;
 use structs::nsMainThreadPtrHandle;
 use structs::nsMainThreadPtrHolder;
+use structs::nsIAtom;
 use heapsize::HeapSizeOf;
 unsafe impl Send for nsStyleFont {}
 unsafe impl Sync for nsStyleFont {}
@@ -101,7 +102,7 @@ unsafe impl Send for nsStyleEffects {}
 unsafe impl Sync for nsStyleEffects {}
 impl HeapSizeOf for nsStyleEffects { fn heap_size_of_children(&self) -> usize { 0 } }
 
-pub enum nsIAtom { }
+// pub enum nsIAtom { }
 pub enum nsINode { }
 pub type RawGeckoNode = nsINode;
 pub enum nsIPrincipal { }

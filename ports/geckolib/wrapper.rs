@@ -20,7 +20,7 @@ use gecko_bindings::bindings::{Gecko_IsUnvisitedLink, Gecko_IsVisitedLink};
 use gecko_bindings::bindings::{Gecko_LocalName, Gecko_Namespace, Gecko_NodeIsElement, Gecko_SetNodeData};
 use gecko_bindings::bindings::{RawGeckoDocument, RawGeckoElement, RawGeckoNode};
 use gecko_bindings::bindings::{ServoNodeData};
-use gecko_bindings::bindings::{nsIAtom};
+use gecko_bindings::structs::{nsIAtom};
 use libc::uintptr_t;
 use properties::GeckoComputedValues;
 use selector_impl::{GeckoSelectorImpl, NonTSPseudoClass, PrivateStyleData};
