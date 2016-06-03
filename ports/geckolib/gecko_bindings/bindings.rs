@@ -134,6 +134,7 @@ pub enum ServoNodeData { }
 pub enum ServoComputedValues { }
 pub enum RawServoStyleSheet { }
 pub enum RawServoStyleSet { }
+pub enum ServoDeclarationBlock { }
 pub type ThreadSafePrincipalHolder = nsMainThreadPtrHolder<nsIPrincipal>;
 pub type ThreadSafeURIHolder = nsMainThreadPtrHolder<nsIURI>;
 extern "C" {
@@ -170,6 +171,8 @@ extern "C" {
     pub fn Gecko_ClassOrClassList(element: *mut RawGeckoElement,
                                   class_: *mut *mut nsIAtom,
                                   classList: *mut *mut *mut nsIAtom) -> u32;
+    pub fn Gecko_GetServoDeclarationBlock(element: *mut RawGeckoElement)
+     -> *mut ServoDeclarationBlock;
     pub fn Gecko_GetNodeData(node: *mut RawGeckoNode) -> *mut ServoNodeData;
     pub fn Gecko_SetNodeData(node: *mut RawGeckoNode,
                              data: *mut ServoNodeData);
@@ -178,7 +181,6 @@ extern "C" {
      -> *mut nsIAtom;
     pub fn Gecko_AddRefAtom(aAtom: *mut nsIAtom);
     pub fn Gecko_ReleaseAtom(aAtom: *mut nsIAtom);
-    pub fn Gecko_HashAtom(aAtom: *mut nsIAtom) -> u32;
     pub fn Gecko_GetAtomAsUTF16(aAtom: *mut nsIAtom, aLength: *mut u32)
      -> *const u16;
     pub fn Gecko_AtomEqualsUTF8(aAtom: *mut nsIAtom,
@@ -242,6 +244,13 @@ extern "C" {
     pub fn Servo_StyleSheetHasRules(sheet: *mut RawServoStyleSheet) -> bool;
     pub fn Servo_InitStyleSet() -> *mut RawServoStyleSet;
     pub fn Servo_DropStyleSet(set: *mut RawServoStyleSet);
+    pub fn Servo_ParseStyleAttribute(bytes: *const u8, length: u8)
+     -> *mut ServoDeclarationBlock;
+    pub fn Servo_CloneDeclarationBlock(declarations:
+                                           *mut ServoDeclarationBlock)
+     -> *mut ServoDeclarationBlock;
+    pub fn Servo_DropDeclarationBlock(declarations:
+                                          *mut ServoDeclarationBlock);
     pub fn Servo_GetComputedValues(node: *mut RawGeckoNode)
      -> *mut ServoComputedValues;
     pub fn Servo_GetComputedValuesForAnonymousBox(parentStyleOrNull:
@@ -266,6 +275,7 @@ extern "C" {
                                  set: *mut RawServoStyleSet);
     pub fn Servo_RestyleSubtree(node: *mut RawGeckoNode,
                                 set: *mut RawServoStyleSet);
+    pub fn Servo_StyleWorkerThreadCount() -> u32;
     pub fn Gecko_GetAttrAsUTF8(element: *mut RawGeckoElement,
                                ns: *mut nsIAtom, name: *mut nsIAtom,
                                length: *mut u32)

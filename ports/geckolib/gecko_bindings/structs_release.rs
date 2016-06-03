@@ -2627,13 +2627,25 @@ pub struct nsTArrayHeader {
     pub _bitfield_1: u32,
 }
 impl nsTArrayHeader {
-    pub fn set_mCapacity(&mut self, val: u32) {
-        self._bitfield_1 &= !(((1 << (31u32 as u32)) - 1) << 0usize);
-        self._bitfield_1 |= (val as u32) << 0usize;
+    #[inline]
+    pub fn mCapacity(&self) -> u32 {
+        (self._bitfield_1 & (2147483647usize as u32)) >> 0usize
     }
+    #[inline]
+    pub fn set_mCapacity(&mut self, val: u32) {
+        self._bitfield_1 &= !(2147483647usize as u32);
+        self._bitfield_1 |=
+            ((val as u32) << 0usize) & (2147483647usize as u32);
+    }
+    #[inline]
+    pub fn mIsAutoArray(&self) -> u32 {
+        (self._bitfield_1 & (2147483648usize as u32)) >> 31usize
+    }
+    #[inline]
     pub fn set_mIsAutoArray(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u32)) - 1) << 31usize);
-        self._bitfield_1 |= (val as u32) << 31usize;
+        self._bitfield_1 &= !(2147483648usize as u32);
+        self._bitfield_1 |=
+            ((val as u32) << 31usize) & (2147483648usize as u32);
     }
     pub const fn new_bitfield_1(mCapacity: u32, mIsAutoArray: bool) -> u32 {
         0 | ((mCapacity as u32) << 0u32) | ((mIsAutoArray as u32) << 31u32)
@@ -2698,10 +2710,6 @@ extern "C" {
 #[derive(Debug, Copy, Clone)]
 pub struct nsTArray_CopyWithConstructors<ElemType> {
     pub _phantom0: ::std::marker::PhantomData<ElemType>,
-}
-extern "C" {
-    #[link_name = "_ZN29nsTArray_CopyWithConstructors12allowReallocE"]
-    pub static nsTArray_CopyWithConstructors_consts_allowRealloc: bool;
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -2923,12 +2931,17 @@ pub enum SurfaceFormat {
     R8G8B8X8 = 3,
     A8R8G8B8 = 4,
     X8R8G8B8 = 5,
-    R5G6B5_UINT16 = 6,
-    A8 = 7,
-    YUV = 8,
-    NV12 = 9,
-    YUV422 = 10,
-    UNKNOWN = 11,
+    R8G8B8 = 6,
+    B8G8R8 = 7,
+    R5G6B5_UINT16 = 8,
+    A8 = 9,
+    YUV = 10,
+    NV12 = 11,
+    YUV422 = 12,
+    HSV = 13,
+    Lab = 14,
+    Depth = 15,
+    UNKNOWN = 16,
 }
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -3064,7 +3077,7 @@ pub enum FillRule { FILL_WINDING = 0, FILL_EVEN_ODD = 1, }
 pub enum AntialiasMode { NONE = 0, GRAY = 1, SUBPIXEL = 2, DEFAULT = 3, }
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum Filter { GOOD = 0, LINEAR = 1, POINT = 2, SENTINEL = 3, }
+pub enum SamplingFilter { GOOD = 0, LINEAR = 1, POINT = 2, SENTINEL = 3, }
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum PatternType {
@@ -3261,7 +3274,7 @@ pub const eFamily_generic_count: FontFamilyType =
  * generic (e.g. serif, sans-serif), with the ability to distinguish
  * between unquoted and quoted names for serializaiton
  */
-#[repr(u32)]
+#[repr(i32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum FontFamilyType {
     eFamily_none = 0,
@@ -4649,13 +4662,25 @@ pub struct _vftable_nsIAtom {
     pub _base: _vftable_nsISupports,
 }
 impl nsIAtom {
-    pub fn set_mLength(&mut self, val: u32) {
-        self._bitfield_1 &= !(((1 << (31u32 as u32)) - 1) << 0usize);
-        self._bitfield_1 |= (val as u32) << 0usize;
+    #[inline]
+    pub fn mLength(&self) -> u32 {
+        (self._bitfield_1 & (2147483647usize as u32)) >> 0usize
     }
+    #[inline]
+    pub fn set_mLength(&mut self, val: u32) {
+        self._bitfield_1 &= !(2147483647usize as u32);
+        self._bitfield_1 |=
+            ((val as u32) << 0usize) & (2147483647usize as u32);
+    }
+    #[inline]
+    pub fn mIsStatic(&self) -> u32 {
+        (self._bitfield_1 & (2147483648usize as u32)) >> 31usize
+    }
+    #[inline]
     pub fn set_mIsStatic(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u32)) - 1) << 31usize);
-        self._bitfield_1 |= (val as u32) << 31usize;
+        self._bitfield_1 &= !(2147483648usize as u32);
+        self._bitfield_1 |=
+            ((val as u32) << 31usize) & (2147483648usize as u32);
     }
     pub const fn new_bitfield_1(mLength: u32, mIsStatic: bool) -> u32 {
         0 | ((mLength as u32) << 0u32) | ((mIsStatic as u32) << 31u32)
@@ -5184,6 +5209,9 @@ pub enum nsStyleImageLayers_nsStyleStruct_h_unnamed_19 {
     maskMode = 10,
     composite = 11,
 }
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum nsStyleImageLayers_LayerType { Background = 0, Mask = 1, }
 #[repr(C)]
 #[derive(Debug, Copy)]
 pub struct nsStyleImageLayers_Position {
@@ -5463,13 +5491,23 @@ pub struct nsStyleGridTemplate {
     pub _bitfield_1: u8,
 }
 impl nsStyleGridTemplate {
-    pub fn set_mIsAutoFill(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u8)) - 1) << 0usize);
-        self._bitfield_1 |= (val as u8) << 0usize;
+    #[inline]
+    pub fn mIsAutoFill(&self) -> u8 {
+        (self._bitfield_1 & (1usize as u8)) >> 0usize
     }
+    #[inline]
+    pub fn set_mIsAutoFill(&mut self, val: bool) {
+        self._bitfield_1 &= !(1usize as u8);
+        self._bitfield_1 |= ((val as u8) << 0usize) & (1usize as u8);
+    }
+    #[inline]
+    pub fn mIsSubgrid(&self) -> u8 {
+        (self._bitfield_1 & (2usize as u8)) >> 1usize
+    }
+    #[inline]
     pub fn set_mIsSubgrid(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u8)) - 1) << 1usize);
-        self._bitfield_1 |= (val as u8) << 1usize;
+        self._bitfield_1 &= !(2usize as u8);
+        self._bitfield_1 |= ((val as u8) << 1usize) & (2usize as u8);
     }
     pub const fn new_bitfield_1(mIsAutoFill: bool, mIsSubgrid: bool) -> u8 {
         0 | ((mIsAutoFill as u8) << 0u32) | ((mIsSubgrid as u8) << 1u32)
@@ -5595,25 +5633,50 @@ pub struct nsStyleText {
     pub mTextEmphasisStyleString: nsString,
 }
 impl nsStyleText {
+    #[inline]
+    pub fn mTextAlignTrue(&self) -> u8 {
+        (self._bitfield_1 & (1usize as u8)) >> 0usize
+    }
+    #[inline]
     pub fn set_mTextAlignTrue(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u8)) - 1) << 0usize);
-        self._bitfield_1 |= (val as u8) << 0usize;
+        self._bitfield_1 &= !(1usize as u8);
+        self._bitfield_1 |= ((val as u8) << 0usize) & (1usize as u8);
     }
+    #[inline]
+    pub fn mTextAlignLastTrue(&self) -> u8 {
+        (self._bitfield_1 & (2usize as u8)) >> 1usize
+    }
+    #[inline]
     pub fn set_mTextAlignLastTrue(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u8)) - 1) << 1usize);
-        self._bitfield_1 |= (val as u8) << 1usize;
+        self._bitfield_1 &= !(2usize as u8);
+        self._bitfield_1 |= ((val as u8) << 1usize) & (2usize as u8);
     }
+    #[inline]
+    pub fn mTextEmphasisColorForeground(&self) -> u8 {
+        (self._bitfield_1 & (4usize as u8)) >> 2usize
+    }
+    #[inline]
     pub fn set_mTextEmphasisColorForeground(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u8)) - 1) << 2usize);
-        self._bitfield_1 |= (val as u8) << 2usize;
+        self._bitfield_1 &= !(4usize as u8);
+        self._bitfield_1 |= ((val as u8) << 2usize) & (4usize as u8);
     }
+    #[inline]
+    pub fn mWebkitTextFillColorForeground(&self) -> u8 {
+        (self._bitfield_1 & (8usize as u8)) >> 3usize
+    }
+    #[inline]
     pub fn set_mWebkitTextFillColorForeground(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u8)) - 1) << 3usize);
-        self._bitfield_1 |= (val as u8) << 3usize;
+        self._bitfield_1 &= !(8usize as u8);
+        self._bitfield_1 |= ((val as u8) << 3usize) & (8usize as u8);
     }
+    #[inline]
+    pub fn mWebkitTextStrokeColorForeground(&self) -> u8 {
+        (self._bitfield_1 & (16usize as u8)) >> 4usize
+    }
+    #[inline]
     pub fn set_mWebkitTextStrokeColorForeground(&mut self, val: bool) {
-        self._bitfield_1 &= !(((1 << (1u32 as u8)) - 1) << 4usize);
-        self._bitfield_1 |= (val as u8) << 4usize;
+        self._bitfield_1 &= !(16usize as u8);
+        self._bitfield_1 |= ((val as u8) << 4usize) & (16usize as u8);
     }
     pub const fn new_bitfield_1(mTextAlignTrue: bool,
                                 mTextAlignLastTrue: bool,
