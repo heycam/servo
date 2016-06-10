@@ -590,12 +590,28 @@ impl MaybeNew for ViewportConstraints {
                                            Au::from_f32_px(initial_viewport.height.get()));
 
 
-        let context = Context {
-            is_root_element: false,
-            viewport_size: initial_viewport,
-            inherited_style: ServoComputedValues::initial_values(),
-            style: ServoComputedValues::initial_values().clone(),
-        };
+        #[cfg(not(feature = "gecko"))]
+        fn make_context<'a>(viewport_size: Size2D<Au>) -> Context<'a, ServoComputedValues> {
+            Context {
+                is_root_element: false,
+                viewport_size: viewport_size,
+                inherited_style: ServoComputedValues::initial_values(),
+                style: ServoComputedValues::initial_values().clone(),
+            }
+        }
+
+        #[cfg(feature = "gecko")]
+        fn make_context<'a>(viewport_size: Size2D<Au>) -> Context<'a, ServoComputedValues> {
+            Context {
+                is_root_element: false,
+                viewport_size: viewport_size,
+                inherited_style: ServoComputedValues::initial_values(),
+                style: ServoComputedValues::initial_values().clone(),
+                post_restyle_tasks: vec![],
+            }
+        }
+
+        let context = make_context(initial_viewport);
 
         // DEVICE-ADAPT § 9.3 Resolving 'extend-to-zoom'
         let extend_width;

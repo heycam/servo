@@ -8,12 +8,13 @@ use app_units::Au;
 use data::{NUM_THREADS, PerDocumentStyleData};
 use env_logger;
 use euclid::Size2D;
+use gecko_bindings::bindings::{Gecko_AppendPostRestyleTask_ResolveImage, Gecko_AppendPostRestyleTask_TrackBackgroundImages};
 use gecko_bindings::bindings::{RawGeckoDocument, RawGeckoElement, RawGeckoNode};
 use gecko_bindings::bindings::{RawServoStyleSet, RawServoStyleSheet, ServoComputedValues};
 use gecko_bindings::bindings::{ServoDeclarationBlock, ServoNodeData, ThreadSafePrincipalHolder};
 use gecko_bindings::bindings::ThreadSafeURIHolder;
 use gecko_bindings::ptr::{GeckoArcPrincipal, GeckoArcURI};
-use gecko_bindings::structs::{SheetParsingMode, nsIAtom};
+use gecko_bindings::structs::{PostRestyleTask as GeckoPostRestyleTask, SheetParsingMode, nsIAtom, nsTArray};
 use properties::GeckoComputedValues;
 use selector_impl::{GeckoSelectorImpl, PseudoElement, SharedStyleContext, Stylesheet};
 use std::marker::PhantomData;
@@ -27,7 +28,7 @@ use style::dom::{TDocument, TElement, TNode};
 use style::error_reporting::StdoutErrorReporter;
 use style::parallel;
 use style::parser::ParserContextExtraData;
-use style::properties::{ComputedValues, PropertyDeclarationBlock};
+use style::properties::{ComputedValues, POST_RESTYLE_TASKS, PostRestyleTask, PropertyDeclarationBlock, RawPtr};
 use style::selector_impl::{SelectorImplExt, PseudoElementCascadeType};
 use style::sequential;
 use style::stylesheets::Origin;
@@ -114,21 +115,49 @@ fn restyle_subtree(node: GeckoNode, raw_data: *mut RawServoStyleSet) {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn Servo_RestyleSubtree(node: *mut RawGeckoNode,
-                                       raw_data: *mut RawServoStyleSet) -> () {
-    let node = unsafe { GeckoNode::from_raw(node) };
-    restyle_subtree(node, raw_data);
+fn append_restyle_tasks(tasks: *mut nsTArray<GeckoPostRestyleTask>) {
+    for task in POST_RESTYLE_TASKS.read().unwrap().iter() {
+        match *task {
+            PostRestyleTask::ResolveImage(ref image) => {
+                unsafe {
+                    Gecko_AppendPostRestyleTask_ResolveImage(tasks, image.as_raw());
+                }
+            },
+            PostRestyleTask::TrackBackgroundImages(RawPtr::Value(bg)) => {
+                unsafe {
+                    Gecko_AppendPostRestyleTask_TrackBackgroundImages(tasks, bg);
+                }
+            },
+            _ => { /* ... */ }
+        }
+    }
+    POST_RESTYLE_TASKS.write().unwrap().clear();
 }
 
 #[no_mangle]
-pub extern "C" fn Servo_RestyleDocument(doc: *mut RawGeckoDocument, raw_data: *mut RawServoStyleSet) -> () {
+pub extern "C" fn Servo_RestyleSubtree(node: *mut RawGeckoNode,
+                                       raw_data: *mut RawServoStyleSet,
+                                       tasks: *mut nsTArray<GeckoPostRestyleTask>) -> () {
+    debug_assert!(POST_RESTYLE_TASKS.read().unwrap().is_empty());
+
+    let node = unsafe { GeckoNode::from_raw(node) };
+    restyle_subtree(node, raw_data);
+    append_restyle_tasks(tasks);
+}
+
+#[no_mangle]
+pub extern "C" fn Servo_RestyleDocument(doc: *mut RawGeckoDocument,
+                                        raw_data: *mut RawServoStyleSet,
+                                        tasks: *mut nsTArray<GeckoPostRestyleTask>) -> () {
+    debug_assert!(POST_RESTYLE_TASKS.read().unwrap().is_empty());
+
     let document = unsafe { GeckoDocument::from_raw(doc) };
     let node = match document.root_node() {
         Some(x) => x,
         None => return,
     };
     restyle_subtree(node, raw_data);
+    append_restyle_tasks(tasks);
 }
 
 #[no_mangle]
@@ -142,6 +171,8 @@ pub extern "C" fn Servo_DropNodeData(data: *mut ServoNodeData) -> () {
 pub extern "C" fn Servo_StylesheetFromUTF8Bytes(bytes: *const u8,
                                                 length: u32,
                                                 mode: SheetParsingMode,
+                                                base_string: *const u8,
+                                                base_length: u32,
                                                 base: *mut ThreadSafeURIHolder,
                                                 referrer: *mut ThreadSafeURIHolder,
                                                 principal: *mut ThreadSafePrincipalHolder)
@@ -155,7 +186,10 @@ pub extern "C" fn Servo_StylesheetFromUTF8Bytes(bytes: *const u8,
     };
 
     // FIXME(heycam): Pass in the real base URL.
-    let url = Url::parse("about:none").unwrap();
+    // let url = Url::parse("about:none").unwrap();
+    let base_str = unsafe { from_utf8_unchecked(slice::from_raw_parts(base_string, base_length as usize)) };
+    // println!("base: {}", base_str);
+    let url = Url::parse(base_str).unwrap();
     let extra_data = ParserContextExtraData {
         base: Some(GeckoArcURI::new(base)),
         referrer: Some(GeckoArcURI::new(referrer)),
@@ -321,6 +355,10 @@ pub extern "C" fn Servo_GetComputedValuesForAnonymousBox(parent_style_or_null: *
     type Helpers = ArcHelpers<ServoComputedValues, GeckoComputedValues>;
 
     Helpers::maybe_with(parent_style_or_null, |maybe_parent| {
+        let _needs_dirtying = Arc::get_mut(&mut data.stylist).unwrap()
+                                  .update(&data.stylesheets, data.stylesheets_changed);
+        data.stylesheets_changed = false;
+
         let new_computed = data.stylist.precomputed_values_for_pseudo(&pseudo, maybe_parent);
         new_computed.map_or(ptr::null_mut(), |c| Helpers::from(c))
     })

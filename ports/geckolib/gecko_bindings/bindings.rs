@@ -36,6 +36,8 @@ use structs::nsFont;
 use structs::FontFamilyList;
 use structs::FontFamilyType;
 use structs::nsIAtom;
+use structs::nsTArray;
+use structs::PostRestyleTask;
 use heapsize::HeapSizeOf;
 unsafe impl Send for nsStyleFont {}
 unsafe impl Sync for nsStyleFont {}
@@ -134,6 +136,7 @@ pub enum ServoNodeData { }
 pub enum ServoComputedValues { }
 pub enum RawServoStyleSheet { }
 pub enum RawServoStyleSet { }
+pub enum nsStyleImageRequest { }
 pub enum ServoDeclarationBlock { }
 pub type ThreadSafePrincipalHolder = nsMainThreadPtrHolder<nsIPrincipal>;
 pub type ThreadSafeURIHolder = nsMainThreadPtrHolder<nsIURI>;
@@ -190,6 +193,16 @@ extern "C" {
                                           aString:
                                               *const ::std::os::raw::c_char,
                                           aLength: u32) -> bool;
+    pub fn Gecko_AddRefPrincipalArbitraryThread(aPtr:
+                                                    *mut ThreadSafePrincipalHolder);
+    pub fn Gecko_ReleasePrincipalArbitraryThread(aPtr:
+                                                     *mut ThreadSafePrincipalHolder);
+    pub fn Gecko_AddRefURIArbitraryThread(aPtr: *mut ThreadSafeURIHolder);
+    pub fn Gecko_ReleaseURIArbitraryThread(aPtr: *mut ThreadSafeURIHolder);
+    pub fn Gecko_AddRefStyleImageRequestArbitraryThread(aPtr:
+                                                            *mut nsStyleImageRequest);
+    pub fn Gecko_ReleaseStyleImageRequestArbitraryThread(aPtr:
+                                                             *mut nsStyleImageRequest);
     pub fn Gecko_FontFamilyList_Clear(aList: *mut FontFamilyList);
     pub fn Gecko_FontFamilyList_AppendNamed(aList: *mut FontFamilyList,
                                             aName: *mut nsIAtom);
@@ -202,6 +215,12 @@ extern "C" {
     pub fn Gecko_SetNullImageValue(image: *mut nsStyleImage);
     pub fn Gecko_SetGradientImageValue(image: *mut nsStyleImage,
                                        gradient: *mut nsStyleGradient);
+    pub fn Gecko_SetURLImageValue(image: *mut nsStyleImage,
+                                  string_bytes: *const u8, string_length: u32,
+                                  base_uri: *mut ThreadSafeURIHolder,
+                                  referrer: *mut ThreadSafeURIHolder,
+                                  principal: *mut ThreadSafePrincipalHolder)
+     -> *mut nsStyleImageRequest;
     pub fn Gecko_CopyImageValueFrom(image: *mut nsStyleImage,
                                     other: *const nsStyleImage);
     pub fn Gecko_CreateGradient(shape: u8, size: u8, repeating: bool,
@@ -210,12 +229,6 @@ extern "C" {
     pub fn Gecko_SetGradientStop(gradient: *mut nsStyleGradient, index: u32,
                                  location: *const nsStyleCoord,
                                  color: nscolor, is_interpolation_hint: bool);
-    pub fn Gecko_AddRefPrincipalArbitraryThread(aPtr:
-                                                    *mut ThreadSafePrincipalHolder);
-    pub fn Gecko_ReleasePrincipalArbitraryThread(aPtr:
-                                                     *mut ThreadSafePrincipalHolder);
-    pub fn Gecko_AddRefURIArbitraryThread(aPtr: *mut ThreadSafeURIHolder);
-    pub fn Gecko_ReleaseURIArbitraryThread(aPtr: *mut ThreadSafeURIHolder);
     pub fn Gecko_SetMozBinding(style_struct: *mut nsStyleDisplay,
                                string_bytes: *const u8, string_length: u32,
                                base_uri: *mut ThreadSafeURIHolder,
@@ -225,6 +238,8 @@ extern "C" {
                                     src: *const nsStyleDisplay);
     pub fn Servo_StylesheetFromUTF8Bytes(bytes: *const u8, length: u32,
                                          parsing_mode: SheetParsingMode,
+                                         base_string: *const u8,
+                                         base_length: u32,
                                          base: *mut ThreadSafeURIHolder,
                                          referrer: *mut ThreadSafeURIHolder,
                                          principal:
@@ -272,9 +287,19 @@ extern "C" {
     pub fn Servo_ReleaseComputedValues(arg1: *mut ServoComputedValues);
     pub fn Servo_Initialize();
     pub fn Servo_RestyleDocument(doc: *mut RawGeckoDocument,
-                                 set: *mut RawServoStyleSet);
+                                 set: *mut RawServoStyleSet,
+                                 tasks: *mut nsTArray<PostRestyleTask>);
     pub fn Servo_RestyleSubtree(node: *mut RawGeckoNode,
-                                set: *mut RawServoStyleSet);
+                                set: *mut RawServoStyleSet,
+                                tasks: *mut nsTArray<PostRestyleTask>);
+    pub fn Gecko_AppendPostRestyleTask_ResolveImage(tasks:
+                                                        *mut nsTArray<PostRestyleTask>,
+                                                    image:
+                                                        *mut nsStyleImageRequest);
+    pub fn Gecko_AppendPostRestyleTask_TrackBackgroundImages(tasks:
+                                                                 *mut nsTArray<PostRestyleTask>,
+                                                             background:
+                                                                 *mut nsStyleBackground);
     pub fn Servo_StyleWorkerThreadCount() -> u32;
     pub fn Gecko_GetAttrAsUTF8(element: *mut RawGeckoElement,
                                ns: *mut nsIAtom, name: *mut nsIAtom,

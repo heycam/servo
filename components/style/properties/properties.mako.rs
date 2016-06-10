@@ -17,13 +17,18 @@ use std::fmt;
 use std::fmt::Write;
 use std::intrinsics;
 use std::mem;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use app_units::Au;
 use cssparser::Color as CSSParserColor;
 use cssparser::{Parser, RGBA, AtRuleParser, DeclarationParser, Delimiter,
                 DeclarationListParser, parse_important, ToCss, TokenSerializationType};
 use error_reporting::ParseErrorReporter;
+#[cfg(feature = "gecko")]
+use gecko_bindings::structs::nsStyleBackground;
+#[cfg(feature = "gecko")]
+use gecko_bindings::ptr::{GeckoArcStyleImageRequest};
+use heapsize::HeapSizeOf;
 use url::Url;
 use euclid::SideOffsets2D;
 use euclid::size::Size2D;
@@ -1036,12 +1041,19 @@ impl PropertyDeclaration {
 
 pub mod style_struct_traits {
     use super::longhands;
+    % if product == "gecko":
+    use super::PostRestyleTask;
+    % endif
 
     % for style_struct in data.active_style_structs():
         pub trait ${style_struct.trait_name}: Clone {
             % for longhand in style_struct.longhands:
                 #[allow(non_snake_case)]
+                % if product == "gecko" and longhand.generates_post_restyle_tasks:
+                fn set_${longhand.ident}(&mut self, v: longhands::${longhand.ident}::computed_value::T) -> Vec<PostRestyleTask>;
+                % else:
                 fn set_${longhand.ident}(&mut self, v: longhands::${longhand.ident}::computed_value::T);
+                % endif
                 #[allow(non_snake_case)]
                 fn copy_${longhand.ident}_from(&mut self, other: &Self);
                 % if longhand.need_clone:
@@ -1060,6 +1072,9 @@ pub mod style_struct_traits {
 pub mod style_structs {
     use fnv::FnvHasher;
     use super::longhands;
+    % if product == "gecko":
+    use super::PostRestyleTask;
+    % endif
     use std::hash::{Hash, Hasher};
 
     % for style_struct in data.active_style_structs():
@@ -1090,9 +1105,18 @@ pub mod style_structs {
 
         impl super::style_struct_traits::${style_struct.trait_name} for ${style_struct.servo_struct_name} {
             % for longhand in style_struct.longhands:
-                fn set_${longhand.ident}(&mut self, v: longhands::${longhand.ident}::computed_value::T) {
+                % if product == "gecko" and longhand.generates_post_restyle_tasks:
+                fn set_${longhand.ident}(&mut self, v: longhands::${longhand.ident}::computed_value::T)
+                                         -> Vec<PostRestyleTask> {
+                    self.${longhand.ident} = v;
+                    vec![]
+                }
+                % else:
+                fn set_${longhand.ident}(&mut self, v: longhands::${longhand.ident}::computed_value::T) 
+                {
                     self.${longhand.ident} = v;
                 }
+                % endif
                 fn copy_${longhand.ident}_from(&mut self, other: &Self) {
                     self.${longhand.ident} = other.${longhand.ident}.clone();
                 }
@@ -1571,6 +1595,42 @@ lazy_static! {
     };
 }
 
+#[cfg(feature = "gecko")]
+lazy_static! {
+    pub static ref POST_RESTYLE_TASKS: RwLock<Vec<PostRestyleTask>> = RwLock::new(vec![]);
+}
+
+pub enum RawPtr<T> {
+    Value(*mut T),
+}
+unsafe impl<T> Send for RawPtr<T> {}
+unsafe impl<T> Sync for RawPtr<T> {}
+impl<T> HeapSizeOf for RawPtr<T> { fn heap_size_of_children(&self) -> usize { 0 } }
+
+#[cfg(feature = "gecko")]
+#[derive_HeapSizeOf]
+pub enum PostRestyleTask {
+    ResolveImage(GeckoArcStyleImageRequest),
+    TrackBackgroundImages(RawPtr<nsStyleBackground>),
+    UpdateImageLocks(GeckoArcStyleImageRequest, GeckoArcStyleImageRequest),
+}
+
+#[cfg(feature = "gecko")]
+pub trait AppendPostRestyleTasks {
+    fn append_post_restyle_tasks(&mut self);
+}
+
+#[cfg(feature = "gecko")]
+impl AppendPostRestyleTasks for () {
+    fn append_post_restyle_tasks(&mut self) {}
+}
+
+#[cfg(feature = "gecko")]
+impl AppendPostRestyleTasks for Vec<PostRestyleTask> {
+    fn append_post_restyle_tasks(&mut self) {
+        POST_RESTYLE_TASKS.write().unwrap().append(self)
+    }
+}
 
 /// Fast path for the function below. Only computes new inherited styles.
 #[allow(unused_mut, unused_imports)]
@@ -1601,6 +1661,9 @@ fn cascade_with_cached_declarations<C: ComputedValues>(
                     .clone_${style_struct.trait_name_lower}(),
             % endfor
         ),
+        % if product == "gecko":
+        post_restyle_tasks: vec![],
+        % endif
     };
     let mut seen = PropertyBitField::new();
     // Declaration blocks are stored in increasing precedence order,
@@ -1794,6 +1857,9 @@ pub fn cascade<C: ComputedValues>(
                 .clone_${style_struct.trait_name_lower}(),
             % endfor
         ),
+        % if product == "gecko":
+        post_restyle_tasks: vec![],
+        % endif
     };
 
     // Set computed values, overwriting earlier declarations for the same property.

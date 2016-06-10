@@ -23,6 +23,7 @@ use gecko_bindings::bindings::{Gecko_CreateGradient};
 use gecko_bindings::bindings::{Gecko_CopyImageValueFrom, Gecko_CopyFontFamilyFrom};
 use gecko_bindings::bindings::{Gecko_FontFamilyList_AppendGeneric, Gecko_FontFamilyList_AppendNamed};
 use gecko_bindings::bindings::{Gecko_FontFamilyList_Clear};
+use gecko_bindings::bindings::{Gecko_SetURLImageValue};
 use gecko_bindings::structs;
 use glue::ArcHelpers;
 use std::fmt::{self, Debug};
@@ -31,7 +32,7 @@ use std::sync::Arc;
 use std::cmp;
 use style::custom_properties::ComputedValuesMap;
 use style::logical_geometry::WritingMode;
-use style::properties::{CascadePropertyFn, ServoComputedValues, ComputedValues};
+use style::properties::{CascadePropertyFn, ComputedValues, PostRestyleTask, RawPtr, ServoComputedValues};
 use style::properties::longhands;
 use style::properties::make_cascade_vec;
 use style::properties::style_struct_traits::*;
@@ -747,7 +748,7 @@ fn static_assert() {
 </%self:impl_trait>
 
 <%self:impl_trait style_struct_name="Background"
-                  skip_longhands="background-color background-repeat background-image"
+                  skip_longhands="background-color background-repeat background-image background-position"
                   skip_additionals="*">
 
     <% impl_color("background_color", "mBackgroundColor") %>
@@ -780,6 +781,53 @@ fn static_assert() {
         };
     }
 
+    fn copy_background_position_from(&mut self, other: &Self) {
+        self.gecko.mImage.mPositionXCount = other.gecko.mImage.mPositionXCount;
+        self.gecko.mImage.mPositionYCount = other.gecko.mImage.mPositionYCount;
+        self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mLength = other.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mLength;
+        self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mPercent = other.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mPercent;
+        self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mHasPercent = other.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mHasPercent;
+        self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mLength = other.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mLength;
+        self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mPercent = other.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mPercent;
+        self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mHasPercent = other.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mHasPercent;
+    }
+
+    fn set_background_position(&mut self, v: longhands::background_position::computed_value::T) {
+        use style::properties::longhands::background_repeat::computed_value::T as Computed;
+        use style::values::computed::LengthOrPercentage;
+
+        match v.horizontal {
+            LengthOrPercentage::Length(au) => {
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mLength = au.0;
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mPercent = 0.0;
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mHasPercent = false;
+            },
+            LengthOrPercentage::Percentage(pc) => {
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mLength = 0;
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mPercent = pc;
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mXPosition.mHasPercent = true;
+            },
+            _ => { warn!("calc not supported"); },
+        }
+
+        match v.vertical {
+            LengthOrPercentage::Length(au) => {
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mLength = au.0;
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mPercent = 0.0;
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mHasPercent = false;
+            },
+            LengthOrPercentage::Percentage(pc) => {
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mLength = 0;
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mPercent = pc;
+                self.gecko.mImage.mLayers.mFirstElement.mPosition.mYPosition.mHasPercent = true;
+            },
+            _ => { warn!("calc not supported"); },
+        }
+
+        self.gecko.mImage.mPositionXCount = 1;
+        self.gecko.mImage.mPositionYCount = 1;
+    }
+
     fn copy_background_image_from(&mut self, other: &Self) {
         unsafe {
             Gecko_CopyImageValueFrom(&mut self.gecko.mImage.mLayers.mFirstElement.mImage,
@@ -787,7 +835,9 @@ fn static_assert() {
         }
     }
 
-    fn set_background_image(&mut self, image: longhands::background_image::computed_value::T) {
+    fn set_background_image(&mut self, image: longhands::background_image::computed_value::T)
+                            -> Vec<PostRestyleTask> {
+        use gecko_bindings::ptr::GeckoArcStyleImageRequest;
         use gecko_bindings::structs::{NS_STYLE_GRADIENT_SHAPE_LINEAR, NS_STYLE_GRADIENT_SIZE_FARTHEST_CORNER};
         use gecko_bindings::structs::nsStyleCoord;
         use style::values::computed::Image;
@@ -799,6 +849,8 @@ fn static_assert() {
             Gecko_SetNullImageValue(&mut self.gecko.mImage.mLayers.mFirstElement.mImage);
         }
 
+        let mut post_restyle_tasks: Vec<PostRestyleTask> = vec![];
+
         self.gecko.mImage.mImageCount = cmp::max(1, self.gecko.mImage.mImageCount);
         if let Some(image) = image.0 {
             match image {
@@ -806,7 +858,7 @@ fn static_assert() {
                     let stop_count = gradient.stops.len();
                     if stop_count >= ::std::u32::MAX as usize {
                         warn!("stylo: Prevented overflow due to too many gradient stops");
-                        return;
+                        return post_restyle_tasks;
                     }
 
                     let gecko_gradient = unsafe {
@@ -857,16 +909,25 @@ fn static_assert() {
                                                     gecko_gradient);
                     }
                 },
-                Image::Url(_) => {
-                    // let utf8_bytes = url.as_bytes();
-                    // Gecko_SetUrlImageValue(&mut self.gecko.mImage.mLayers.mFirstElement,
-                    //                        utf8_bytes.as_ptr() as *const _,
-                    //                        utf8_bytes.len());
-                    warn!("stylo: imgRequestProxies are not threadsafe in gecko, \
-                           background-image: url() not yet implemented");
+                Image::Url(ref url, ref extra_data) => {
+                    unsafe {
+                        let request = 
+                            Gecko_SetURLImageValue(&mut self.gecko.mImage.mLayers.mFirstElement.mImage,
+                                                   url.as_str().as_ptr(),
+                                                   url.as_str().len() as u32,
+                                                   extra_data.base.as_raw(),
+                                                   extra_data.referrer.as_raw(),
+                                                   extra_data.principal.as_raw());
+                        debug_assert!(!request.is_null());
+                        post_restyle_tasks.push(PostRestyleTask::ResolveImage(GeckoArcStyleImageRequest::new(request)));
+                        // XXXheycam: Better to call this unconditionally after computing the
+                        // entire Background struct.
+                        post_restyle_tasks.push(PostRestyleTask::TrackBackgroundImages(RawPtr::Value(&mut self.gecko as *mut _)));
+                    }
                 }
             }
         }
+        post_restyle_tasks
     }
 </%self:impl_trait>
 

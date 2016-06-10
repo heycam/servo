@@ -9,7 +9,7 @@ ${helpers.predefined_type(
     "background-color", "CSSColor",
     "::cssparser::Color::RGBA(::cssparser::RGBA { red: 0., green: 0., blue: 0., alpha: 0. }) /* transparent */")}
 
-<%helpers:longhand name="background-image">
+<%helpers:longhand name="background-image" generates_post_restyle_tasks="True">
     use cssparser::ToCss;
     use std::fmt;
     use values::specified::Image;
@@ -25,7 +25,7 @@ ${helpers.predefined_type(
         fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
             match self.0 {
                 None => dest.write_str("none"),
-                Some(computed::Image::Url(ref url)) => url.to_css(dest),
+                Some(computed::Image::Url(ref url, ref _extra_data)) => url.to_css(dest),
                 Some(computed::Image::LinearGradient(ref gradient)) =>
                     gradient.to_css(dest)
             }

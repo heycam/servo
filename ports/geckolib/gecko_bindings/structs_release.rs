@@ -188,8 +188,8 @@ pub const NS_ERROR_MODULE_BASE_OFFSET: ::std::os::raw::c_uint = 69;
 pub const MOZ_STRING_WITH_OBSOLETE_API: ::std::os::raw::c_uint = 1;
 pub const NSID_LENGTH: ::std::os::raw::c_uint = 39;
 pub const NS_NUMBER_OF_FLAGS_IN_REFCNT: ::std::os::raw::c_uint = 2;
-pub const _STL_PAIR_H: ::std::os::raw::c_uint = 1;
 pub const _GLIBCXX_UTILITY: ::std::os::raw::c_uint = 1;
+pub const _STL_PAIR_H: ::std::os::raw::c_uint = 1;
 pub const TWIPS_PER_POINT_INT: ::std::os::raw::c_uint = 20;
 pub const POINTS_PER_INCH_INT: ::std::os::raw::c_uint = 72;
 pub const NS_FONT_VARIANT_NORMAL: ::std::os::raw::c_uint = 0;
@@ -2769,6 +2769,110 @@ fn bindgen_test_layout_CSSVariableValues() {
     assert_eq!(::std::mem::size_of::<CSSVariableValues>() , 48usize);
     assert_eq!(::std::mem::align_of::<CSSVariableValues>() , 8usize);
 }
+pub type nscolor = u32;
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum nsHexColorType { NoAlpha = 0, AllowAlpha = 1, }
+/**
+ * Enum defining the mode in which a sheet is to be parsed.  This is
+ * usually, but not always, the same as the cascade level at which the
+ * sheet will apply (see nsStyleSet.h).  Most of the Loader APIs only
+ * support loading of author sheets.
+ *
+ * Author sheets are the normal case: styles embedded in or linked
+ * from HTML pages.  They are also the most restricted.
+ *
+ * User sheets can do anything author sheets can do, and also get
+ * access to a few CSS extensions that are not yet suitable for
+ * exposure on the public Web, but are very useful for expressing
+ * user style overrides, such as @-moz-document rules.
+ *
+ * Agent sheets have access to all author- and user-sheet features
+ * plus more extensions that are necessary for internal use but,
+ * again, not yet suitable for exposure on the public Web.  Some of
+ * these are outright unsafe to expose; in particular, incorrect
+ * styling of anonymous box pseudo-elements can violate layout
+ * invariants.
+ */
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum SheetParsingMode {
+    eAuthorSheetFeatures = 0,
+    eUserSheetFeatures = 1,
+    eAgentSheetFeatures = 2,
+}
+#[repr(C)]
+#[derive(Debug, Copy)]
+pub struct piecewise_construct_t;
+impl ::std::clone::Clone for piecewise_construct_t {
+    fn clone(&self) -> Self { *self }
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct pair<_T1, _T2> {
+    pub first: _T1,
+    pub second: _T2,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tuple_size<_Tp> {
+    pub _phantom0: ::std::marker::PhantomData<_Tp>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tuple_element<_Tp> {
+    pub _phantom0: ::std::marker::PhantomData<_Tp>,
+}
+/**
+ * Class to safely handle main-thread-only pointers off the main thread.
+ *
+ * Classes like XPCWrappedJS are main-thread-only, which means that it is
+ * forbidden to call methods on instances of these classes off the main thread.
+ * For various reasons (see bug 771074), this restriction recently began to
+ * apply to AddRef/Release as well.
+ *
+ * This presents a problem for consumers that wish to hold a callback alive
+ * on non-main-thread code. A common example of this is the proxy callback
+ * pattern, where non-main-thread code holds a strong-reference to the callback
+ * object, and dispatches new Runnables (also with a strong reference) to the
+ * main thread in order to execute the callback. This involves several AddRef
+ * and Release calls on the other thread, which is (now) verboten.
+ *
+ * The basic idea of this class is to introduce a layer of indirection.
+ * nsMainThreadPtrHolder is a threadsafe reference-counted class that internally
+ * maintains one strong reference to the main-thread-only object. It must be
+ * instantiated on the main thread (so that the AddRef of the underlying object
+ * happens on the main thread), but consumers may subsequently pass references
+ * to the holder anywhere they please. These references are meant to be opaque
+ * when accessed off-main-thread (assertions enforce this).
+ *
+ * The semantics of RefPtr<nsMainThreadPtrHolder<T> > would be cumbersome, so
+ * we also introduce nsMainThreadPtrHandle<T>, which is conceptually identical
+ * to the above (though it includes various convenience methods). The basic
+ * pattern is as follows.
+ *
+ * // On the main thread:
+ * nsCOMPtr<nsIFooCallback> callback = ...;
+ * nsMainThreadPtrHandle<nsIFooCallback> callbackHandle =
+ *   new nsMainThreadPtrHolder<nsIFooCallback>(callback);
+ * // Pass callbackHandle to structs/classes that might be accessed on other
+ * // threads.
+ *
+ * All structs and classes that might be accessed on other threads should store
+ * an nsMainThreadPtrHandle<T> rather than an nsCOMPtr<T>.
+ */
+#[repr(C)]
+#[derive(Debug)]
+pub struct nsMainThreadPtrHolder<T> {
+    pub mRefCnt: ThreadSafeAutoRefCnt,
+    pub mRawPtr: *mut T,
+    pub mStrict: bool,
+}
+#[repr(C)]
+#[derive(Debug)]
+pub struct nsMainThreadPtrHandle<T> {
+    pub mPtr: RefPtr<T>,
+}
 #[repr(i8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum SheetType {
@@ -2890,18 +2994,6 @@ pub enum gfxContentType {
     ALPHA = 8192,
     COLOR_ALPHA = 12288,
     SENTINEL = 65535,
-}
-#[repr(C)]
-#[derive(Debug, Copy)]
-pub struct piecewise_construct_t;
-impl ::std::clone::Clone for piecewise_construct_t {
-    fn clone(&self) -> Self { *self }
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct pair<_T1, _T2> {
-    pub first: _T1,
-    pub second: _T2,
 }
 pub type Float = f32;
 #[repr(i8)]
@@ -3163,16 +3255,6 @@ pub enum SideBits {
     eSideBitsTopBottom = 5,
     eSideBitsLeftRight = 10,
     eSideBitsAll = 15,
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct tuple_size<_Tp> {
-    pub _phantom0: ::std::marker::PhantomData<_Tp>,
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct tuple_element<_Tp> {
-    pub _phantom0: ::std::marker::PhantomData<_Tp>,
 }
 pub type nscoord = i32;
 #[repr(C)]
@@ -3942,60 +4024,6 @@ pub enum nsCSSPropertyLogicalGroup {
     eCSSPropertyLogicalGroup_Size = 8,
     eCSSPropertyLogicalGroup_COUNT = 9,
 }
-pub type nscolor = u32;
-#[repr(i8)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum nsHexColorType { NoAlpha = 0, AllowAlpha = 1, }
-/**
- * Class to safely handle main-thread-only pointers off the main thread.
- *
- * Classes like XPCWrappedJS are main-thread-only, which means that it is
- * forbidden to call methods on instances of these classes off the main thread.
- * For various reasons (see bug 771074), this restriction recently began to
- * apply to AddRef/Release as well.
- *
- * This presents a problem for consumers that wish to hold a callback alive
- * on non-main-thread code. A common example of this is the proxy callback
- * pattern, where non-main-thread code holds a strong-reference to the callback
- * object, and dispatches new Runnables (also with a strong reference) to the
- * main thread in order to execute the callback. This involves several AddRef
- * and Release calls on the other thread, which is (now) verboten.
- *
- * The basic idea of this class is to introduce a layer of indirection.
- * nsMainThreadPtrHolder is a threadsafe reference-counted class that internally
- * maintains one strong reference to the main-thread-only object. It must be
- * instantiated on the main thread (so that the AddRef of the underlying object
- * happens on the main thread), but consumers may subsequently pass references
- * to the holder anywhere they please. These references are meant to be opaque
- * when accessed off-main-thread (assertions enforce this).
- *
- * The semantics of RefPtr<nsMainThreadPtrHolder<T> > would be cumbersome, so
- * we also introduce nsMainThreadPtrHandle<T>, which is conceptually identical
- * to the above (though it includes various convenience methods). The basic
- * pattern is as follows.
- *
- * // On the main thread:
- * nsCOMPtr<nsIFooCallback> callback = ...;
- * nsMainThreadPtrHandle<nsIFooCallback> callbackHandle =
- *   new nsMainThreadPtrHolder<nsIFooCallback>(callback);
- * // Pass callbackHandle to structs/classes that might be accessed on other
- * // threads.
- *
- * All structs and classes that might be accessed on other threads should store
- * an nsMainThreadPtrHandle<T> rather than an nsCOMPtr<T>.
- */
-#[repr(C)]
-#[derive(Debug)]
-pub struct nsMainThreadPtrHolder<T> {
-    pub mRefCnt: ThreadSafeAutoRefCnt,
-    pub mRawPtr: *mut T,
-    pub mStrict: bool,
-}
-#[repr(C)]
-#[derive(Debug)]
-pub struct nsMainThreadPtrHandle<T> {
-    pub mPtr: RefPtr<T>,
-}
 /**
  * This structure precedes the string buffers "we" allocate.  It may be the
  * case that nsTAString::mData does not point to one of these special
@@ -4586,34 +4614,6 @@ fn bindgen_test_layout_CounterStyleManager() {
     assert_eq!(::std::mem::size_of::<CounterStyleManager>() , 64usize);
     assert_eq!(::std::mem::align_of::<CounterStyleManager>() , 8usize);
 }
-/**
- * Enum defining the mode in which a sheet is to be parsed.  This is
- * usually, but not always, the same as the cascade level at which the
- * sheet will apply (see nsStyleSet.h).  Most of the Loader APIs only
- * support loading of author sheets.
- *
- * Author sheets are the normal case: styles embedded in or linked
- * from HTML pages.  They are also the most restricted.
- *
- * User sheets can do anything author sheets can do, and also get
- * access to a few CSS extensions that are not yet suitable for
- * exposure on the public Web, but are very useful for expressing
- * user style overrides, such as @-moz-document rules.
- *
- * Agent sheets have access to all author- and user-sheet features
- * plus more extensions that are necessary for internal use but,
- * again, not yet suitable for exposure on the public Web.  Some of
- * these are outright unsafe to expose; in particular, incorrect
- * styling of anonymous box pseudo-elements can violate layout
- * invariants.
- */
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum SheetParsingMode {
-    eAuthorSheetFeatures = 0,
-    eUserSheetFeatures = 1,
-    eAgentSheetFeatures = 2,
-}
 pub type nsLoadFlags = u32;
 #[repr(C)]
 #[derive(Debug, Copy)]
@@ -5090,6 +5090,36 @@ fn bindgen_test_layout_nsStyleGradient() {
     assert_eq!(::std::mem::size_of::<nsStyleGradient>() , 104usize);
     assert_eq!(::std::mem::align_of::<nsStyleGradient>() , 8usize);
 }
+/**
+ * A wrapper for an imgRequestProxy that can be created off the main
+ * thread, but which can be assigned with enough data to get the underlying
+ * imgRequestProxy on the main thread later.
+ */
+#[repr(C)]
+pub struct nsStyleImageRequest {
+    pub mRefCnt: ThreadSafeAutoRefCnt,
+    pub mRequestProxy: nsMainThreadPtrHandle<imgRequestProxy>,
+    pub mDetails: nsAutoPtr<nsStyleImageRequest_Details>,
+}
+#[repr(C)]
+pub struct nsStyleImageRequest_Details {
+    pub mURLString: NS_ConvertUTF8toUTF16,
+    pub mBaseURI: nsMainThreadPtrHandle<nsIURI>,
+    pub mReferrer: nsMainThreadPtrHandle<nsIURI>,
+    pub mPrincipal: nsMainThreadPtrHandle<nsIPrincipal>,
+}
+#[test]
+fn bindgen_test_layout_nsStyleImageRequest_Details() {
+    assert_eq!(::std::mem::size_of::<nsStyleImageRequest_Details>() ,
+               184usize);
+    assert_eq!(::std::mem::align_of::<nsStyleImageRequest_Details>() ,
+               8usize);
+}
+#[test]
+fn bindgen_test_layout_nsStyleImageRequest() {
+    assert_eq!(::std::mem::size_of::<nsStyleImageRequest>() , 24usize);
+    assert_eq!(::std::mem::align_of::<nsStyleImageRequest>() , 8usize);
+}
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum nsStyleImageType {
@@ -5118,13 +5148,13 @@ pub struct nsStyleImage {
 #[repr(C)]
 #[derive(Debug, Copy)]
 pub struct nsStyleImage_nsStyleStruct_h_unnamed_18 {
-    pub mImage: __BindgenUnionField<*mut imgRequestProxy>,
+    pub mImage: __BindgenUnionField<*mut nsStyleImageRequest>,
     pub mGradient: __BindgenUnionField<*mut nsStyleGradient>,
     pub mElementId: __BindgenUnionField<*mut ::std::os::raw::c_ushort>,
     pub _bindgen_data_: u64,
 }
 impl nsStyleImage_nsStyleStruct_h_unnamed_18 {
-    pub unsafe fn mImage(&mut self) -> *mut *mut imgRequestProxy {
+    pub unsafe fn mImage(&mut self) -> *mut *mut nsStyleImageRequest {
         let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
         ::std::mem::transmute(raw.offset(0))
     }
@@ -5444,7 +5474,7 @@ fn bindgen_test_layout_nsStyleQuoteValues() {
 pub struct nsStyleList {
     pub mListStylePosition: u8,
     pub mCounterStyle: RefPtr<CounterStyle>,
-    pub mListStyleImage: RefPtr<imgRequestProxy>,
+    pub mListStyleImage: RefPtr<nsStyleImageRequest>,
     pub mQuotes: RefPtr<nsStyleQuoteValues>,
     pub mImageRegion: nsRect,
 }
@@ -5984,7 +6014,7 @@ pub struct nsStyleContentData {
 #[derive(Debug, Copy)]
 pub struct nsStyleContentData_nsStyleStruct_h_unnamed_23 {
     pub mString: __BindgenUnionField<*mut ::std::os::raw::c_ushort>,
-    pub mImage: __BindgenUnionField<*mut imgRequestProxy>,
+    pub mImage: __BindgenUnionField<*mut nsStyleImageRequest>,
     pub mCounters: __BindgenUnionField<*mut Array>,
     pub _bindgen_data_: u64,
 }
@@ -5993,7 +6023,7 @@ impl nsStyleContentData_nsStyleStruct_h_unnamed_23 {
         let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
         ::std::mem::transmute(raw.offset(0))
     }
-    pub unsafe fn mImage(&mut self) -> *mut *mut imgRequestProxy {
+    pub unsafe fn mImage(&mut self) -> *mut *mut nsStyleImageRequest {
         let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
         ::std::mem::transmute(raw.offset(0))
     }
@@ -6363,4 +6393,18 @@ pub struct nsStyleEffects {
 fn bindgen_test_layout_nsStyleEffects() {
     assert_eq!(::std::mem::size_of::<nsStyleEffects>() , 40usize);
     assert_eq!(::std::mem::align_of::<nsStyleEffects>() , 8usize);
+}
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum PostRestyleTaskType { ResolveImage = 0, TrackBackgroundImages = 1, }
+#[repr(C)]
+pub struct PostRestyleTask {
+    pub mType: PostRestyleTaskType,
+    pub mImage: RefPtr<nsStyleImageRequest>,
+    pub mBackground: *mut nsStyleBackground,
+}
+#[test]
+fn bindgen_test_layout_PostRestyleTask() {
+    assert_eq!(::std::mem::size_of::<PostRestyleTask>() , 24usize);
+    assert_eq!(::std::mem::align_of::<PostRestyleTask>() , 8usize);
 }

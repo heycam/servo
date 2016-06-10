@@ -49,9 +49,12 @@
         use error_reporting::ParseErrorReporter;
         use properties::longhands;
         use properties::property_bit_field::PropertyBitField;
-        use properties::{ComputedValues, ServoComputedValues, PropertyDeclaration};
+        use properties::{AppendPostRestyleTasks, ComputedValues, PostRestyleTask, PropertyDeclaration};
+        use properties::ServoComputedValues;
         use properties::style_struct_traits::${data.current_style_struct.trait_name};
         use properties::style_structs;
+        #[cfg(feature = "gecko")]
+        use properties::POST_RESTYLE_TASKS;
         use std::boxed::Box as StdBox;
         use std::collections::HashMap;
         use std::sync::Arc;
@@ -84,8 +87,24 @@
                         declared_value, &custom_props, |value| match *value {
                             DeclaredValue::Value(ref specified_value) => {
                                 let computed = specified_value.to_computed_value(context);
-                                context.mutate_style().mutate_${data.current_style_struct.trait_name_lower}()
-                                                      .set_${property.ident}(computed);
+                                % if product == "gecko" and property.ident == "background_image":
+                                /*
+                                match computed {
+                                    longhands::background_image::computed_value::T(Some(computed::Image::Url(..))) => *cacheable = false,
+                                    _ => {},
+                                }
+                                */
+                                % endif
+                                % if product == "gecko" and property.generates_post_restyle_tasks:
+                                let mut tasks =
+                                % endif
+                                    context.mutate_style()
+                                           .mutate_${data.current_style_struct.trait_name_lower}()
+                                           .set_${property.ident}(computed);
+                                % if product == "gecko" and property.generates_post_restyle_tasks:
+                                // context.post_restyle_tasks.append(tasks);
+                                tasks.append_post_restyle_tasks();
+                                % endif
                             }
                             DeclaredValue::WithVariables { .. } => unreachable!(),
                             DeclaredValue::Initial => {

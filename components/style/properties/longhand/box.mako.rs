@@ -861,14 +861,8 @@ ${helpers.single_keyword("-moz-appearance",
     use gecko_bindings::ptr::{GeckoArcPrincipal, GeckoArcURI};
     use std::fmt::{self, Write};
     use url::Url;
+    use values::specified::UrlExtraData;
     use values::computed::ComputedValueAsSpecified;
-
-    #[derive(PartialEq, Clone, Debug, HeapSizeOf)]
-    pub struct UrlExtraData {
-        pub base: GeckoArcURI,
-        pub referrer: GeckoArcURI,
-        pub principal: GeckoArcPrincipal,
-    }
 
     #[derive(PartialEq, Clone, Debug, HeapSizeOf)]
     pub enum SpecifiedValue {
