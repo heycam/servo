@@ -9,6 +9,7 @@ use app_units::Au;
 use dom::OpaqueNode;
 use error_reporting::ParseErrorReporter;
 use euclid::Size2D;
+#[cfg(feature = "gecko")] pub use gecko_task::PostRestyleTask;
 use matching::{ApplicableDeclarationsCache, StyleSharingCandidateCache};
 use selector_matching::Stylist;
 use std::cell::RefCell;
@@ -17,15 +18,32 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, RwLock};
 use timer::Timer;
 
-/// This structure is used to create a local style context from a shared one.
+#[cfg(feature = "servo")]
+pub enum PostRestyleTask { }
+
+/// This structure is used to create a local style and a per-restyle context
+/// from a shared one.
 pub struct LocalStyleContextCreationInfo {
     new_animations_sender: Sender<Animation>,
+
+    #[cfg(feature = "gecko")]
+    post_restyle_task_sender: Sender<PostRestyleTask>,
 }
 
 impl LocalStyleContextCreationInfo {
+    #[cfg(feature = "servo")]
     pub fn new(animations_sender: Sender<Animation>) -> Self {
         LocalStyleContextCreationInfo {
             new_animations_sender: animations_sender,
+        }
+    }
+
+    #[cfg(feature = "gecko")]
+    pub fn new(animations_sender: Sender<Animation>,
+               post_restyle_task_sender: Sender<PostRestyleTask>) -> Self {
+        LocalStyleContextCreationInfo {
+            new_animations_sender: animations_sender,
+            post_restyle_task_sender: post_restyle_task_sender,
         }
     }
 }
@@ -82,9 +100,52 @@ impl LocalStyleContext {
     }
 }
 
+pub struct PerRestyleContext {
+    /// A channel on which tasks to be performed on the Gecko main thread after
+    /// restyling can be sent.
+    #[cfg(feature = "gecko")]
+    post_restyle_task_sender: Option<Sender<PostRestyleTask>>,
+}
+
+#[cfg(feature = "servo")]
+impl PerRestyleContext {
+    pub fn new(_local_context_creation_data: &LocalStyleContextCreationInfo) -> Self {
+        PerRestyleContext { }
+    }
+
+    pub fn default() -> Self {
+        PerRestyleContext { }
+    }
+
+    pub fn post_restyle_task_sender(&self) -> ! {
+        panic!("PerRestyleContext::post_restyle_task_sender() should only be called in geckolib");
+    }
+}
+
+#[cfg(feature = "gecko")]
+impl PerRestyleContext {
+    pub fn new(local_context_creation_data: &LocalStyleContextCreationInfo) -> Self {
+        let sender = local_context_creation_data.post_restyle_task_sender.clone();
+        PerRestyleContext { post_restyle_task_sender: Some(sender) }
+    }
+
+    pub fn new_with_post_restyle_task_sender(sender: Sender<PostRestyleTask>) -> Self {
+        PerRestyleContext { post_restyle_task_sender: Some(sender) }
+    }
+
+    pub fn default() -> Self {
+        PerRestyleContext { post_restyle_task_sender: None }
+    }
+
+    pub fn post_restyle_task_sender(&self) -> &Sender<PostRestyleTask> {
+        self.post_restyle_task_sender.as_ref().unwrap()
+    }
+}
+
 pub trait StyleContext<'a> {
     fn shared_context(&self) -> &'a SharedStyleContext;
     fn local_context(&self) -> &LocalStyleContext;
+    fn per_restyle_context(&self) -> &PerRestyleContext;
 }
 
 /// Why we're doing reflow.

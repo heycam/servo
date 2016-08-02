@@ -7,6 +7,7 @@ use euclid::size::Size2D;
 use ordered_float::NotNaN;
 use properties::ComputedValues;
 use std::fmt;
+use super::super::context::PerRestyleContext;
 use super::LocalToCss;
 use super::specified::AngleOrCorner;
 use super::{CSSFloat, specified};
@@ -17,17 +18,18 @@ pub use super::specified::{Angle, BorderStyle, Time, UrlExtraData};
 pub mod basic_shape;
 pub mod position;
 
-pub struct Context<'a> {
+pub struct Context<'a, 'b> {
     pub is_root_element: bool,
     pub viewport_size: Size2D<Au>,
     pub inherited_style: &'a ComputedValues,
+    pub per_restyle_context: &'b PerRestyleContext,
 
     /// Values access through this need to be in the properties "computed early":
     /// color, text-decoration, font-size, display, position, float, border-*-style, outline-style
     pub style: ComputedValues,
 }
 
-impl<'a> Context<'a> {
+impl<'a, 'b> Context<'a, 'b> {
     pub fn is_root_element(&self) -> bool { self.is_root_element }
     pub fn viewport_size(&self) -> Size2D<Au> { self.viewport_size }
     pub fn inherited_style(&self) -> &ComputedValues { &self.inherited_style }

@@ -5,7 +5,7 @@
 //! CSS transitions and animations.
 
 use bezier::Bezier;
-use context::SharedStyleContext;
+use context::{PerRestyleContext, SharedStyleContext};
 use dom::OpaqueNode;
 use euclid::point::Point2D;
 use keyframes::{KeyframesStep, KeyframesStepValue};
@@ -394,6 +394,7 @@ fn compute_style_for_animation_step(context: &SharedStyleContext,
                                                     false,
                                                     Some(previous_style),
                                                     None,
+                                                    &PerRestyleContext::default(),
                                                     context.error_reporter.clone());
             computed
         }

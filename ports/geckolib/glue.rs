@@ -22,8 +22,10 @@ use std::ptr;
 use std::slice;
 use std::str::from_utf8_unchecked;
 use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use style::arc_ptr_eq;
-use style::context::{LocalStyleContextCreationInfo, ReflowGoal, SharedStyleContext};
+use style::context::{LocalStyleContextCreationInfo, PerRestyleContext, PostRestyleTask};
+use style::context::{ReflowGoal, SharedStyleContext};
 use style::dom::{TDocument, TElement, TNode};
 use style::error_reporting::StdoutErrorReporter;
 use style::gecko_glue::ArcHelpers;
@@ -87,7 +89,16 @@ pub extern "C" fn Servo_Shutdown() -> () {
     unsafe { ComputedValues::shutdown(); }
 }
 
-fn restyle_subtree(node: GeckoNode, raw_data: *mut RawServoStyleSet) {
+fn process_post_restyle_tasks(pres_context: *mut nsPresContext,
+                              receiver: Receiver<PostRestyleTask>) {
+    while let Ok(_task) = receiver.recv() {
+        // No tasks to handle yet.
+    }
+}
+
+fn restyle_subtree(pres_context: *mut nsPresContext,
+                   node: GeckoNode,
+                   raw_data: *mut RawServoStyleSet) {
     debug_assert!(node.is_element() || node.is_text_node());
 
     // Force the creation of our lazily-constructed initial computed values on
@@ -103,37 +114,44 @@ fn restyle_subtree(node: GeckoNode, raw_data: *mut RawServoStyleSet) {
     let per_doc_data = unsafe { &mut *(raw_data as *mut PerDocumentStyleData) };
     per_doc_data.flush_stylesheets();
 
-    let local_context_data =
-        LocalStyleContextCreationInfo::new(per_doc_data.new_animations_sender.clone());
+    let (post_restyle_task_sender, post_restyle_task_receiver) = channel();
+    {
+        let local_context_data =
+            LocalStyleContextCreationInfo::new(per_doc_data.new_animations_sender.clone(),
+                                               post_restyle_task_sender);
 
-    let shared_style_context = SharedStyleContext {
-        viewport_size: Size2D::new(Au(0), Au(0)),
-        screen_size_changed: false,
-        generation: 0,
-        goal: ReflowGoal::ForScriptQuery,
-        stylist: per_doc_data.stylist.clone(),
-        running_animations: per_doc_data.running_animations.clone(),
-        expired_animations: per_doc_data.expired_animations.clone(),
-        error_reporter: Box::new(StdoutErrorReporter),
-        local_context_creation_data: Mutex::new(local_context_data),
-        timer: Timer::new(),
-    };
+        let shared_style_context = SharedStyleContext {
+            viewport_size: Size2D::new(Au(0), Au(0)),
+            screen_size_changed: false,
+            generation: 0,
+            goal: ReflowGoal::ForScriptQuery,
+            stylist: per_doc_data.stylist.clone(),
+            running_animations: per_doc_data.running_animations.clone(),
+            expired_animations: per_doc_data.expired_animations.clone(),
+            error_reporter: Box::new(StdoutErrorReporter),
+            local_context_creation_data: Mutex::new(local_context_data),
+            timer: Timer::new(),
+        };
 
-    // We ensure this is true before calling Servo_RestyleSubtree()
-    debug_assert!(node.is_dirty() || node.has_dirty_descendants());
-    if per_doc_data.num_threads == 1 {
-        sequential::traverse_dom::<GeckoNode, RecalcStyleOnly>(node, &shared_style_context);
-    } else {
-        parallel::traverse_dom::<GeckoNode, RecalcStyleOnly>(node, &shared_style_context,
-                                                             &mut per_doc_data.work_queue);
+        // We ensure this is true before calling Servo_RestyleSubtree()
+        debug_assert!(node.is_dirty() || node.has_dirty_descendants());
+        if per_doc_data.num_threads == 1 {
+            sequential::traverse_dom::<GeckoNode, RecalcStyleOnly>(node, &shared_style_context);
+        } else {
+            parallel::traverse_dom::<GeckoNode, RecalcStyleOnly>(node, &shared_style_context,
+                                                                 &mut per_doc_data.work_queue);
+        }
     }
+
+    process_post_restyle_tasks(pres_context, post_restyle_task_receiver);
 }
 
 #[no_mangle]
-pub extern "C" fn Servo_RestyleSubtree(node: *mut RawGeckoNode,
+pub extern "C" fn Servo_RestyleSubtree(pres_context: *mut nsPresContext,
+                                       node: *mut RawGeckoNode,
                                        raw_data: *mut RawServoStyleSet) -> () {
     let node = unsafe { GeckoNode::from_raw(node) };
-    restyle_subtree(node, raw_data);
+    restyle_subtree(pres_context, node, raw_data);
 }
 
 #[no_mangle]
@@ -268,7 +286,8 @@ pub extern "C" fn Servo_GetComputedValues(node: *mut RawGeckoNode)
 }
 
 #[no_mangle]
-pub extern "C" fn Servo_GetComputedValuesForAnonymousBox(parent_style_or_null: *mut ServoComputedValues,
+pub extern "C" fn Servo_GetComputedValuesForAnonymousBox(pres_context: *mut nsPresContext,
+                                                         parent_style_or_null: *mut ServoComputedValues,
                                                          pseudo_tag: *mut nsIAtom,
                                                          raw_data: *mut RawServoStyleSet)
      -> *mut ServoComputedValues {
@@ -285,15 +304,25 @@ pub extern "C" fn Servo_GetComputedValuesForAnonymousBox(parent_style_or_null: *
     };
 
     type Helpers = ArcHelpers<ServoComputedValues, ComputedValues>;
-
     Helpers::maybe_with(parent_style_or_null, |maybe_parent| {
-        let new_computed = data.stylist.precomputed_values_for_pseudo(&pseudo, maybe_parent);
-        new_computed.map_or(ptr::null_mut(), |c| Helpers::from(c))
+        let result;
+        let (post_restyle_task_sender, post_restyle_task_receiver) = channel();
+        {
+            let per_restyle_context =
+                PerRestyleContext::new_with_post_restyle_task_sender(post_restyle_task_sender);
+            let new_computed = data.stylist.precomputed_values_for_pseudo(&pseudo,
+                                                                          &per_restyle_context,
+                                                                          maybe_parent);
+            result = new_computed.map_or(ptr::null_mut(), |c| Helpers::from(c));
+        }
+        process_post_restyle_tasks(pres_context, post_restyle_task_receiver);
+        result
     })
 }
 
 #[no_mangle]
-pub extern "C" fn Servo_GetComputedValuesForPseudoElement(parent_style: *mut ServoComputedValues,
+pub extern "C" fn Servo_GetComputedValuesForPseudoElement(pres_context: *mut nsPresContext,
+                                                          parent_style: *mut ServoComputedValues,
                                                           match_element: *mut RawGeckoElement,
                                                           pseudo_tag: *mut nsIAtom,
                                                           raw_data: *mut RawServoStyleSet,
@@ -338,9 +367,18 @@ pub extern "C" fn Servo_GetComputedValuesForPseudoElement(parent_style: *mut Ser
         }
         PseudoElementCascadeType::Lazy => {
             Helpers::with(parent_style, |parent| {
-                data.stylist
-                    .lazily_compute_pseudo_element_style(&element, &pseudo, parent)
-                    .map_or_else(parent_or_null, Helpers::from)
+                let result;
+                let (post_restyle_task_sender, post_restyle_task_receiver) = channel();
+                {
+                    let per_restyle_context =
+                        PerRestyleContext::new_with_post_restyle_task_sender(post_restyle_task_sender);
+                    result = data.stylist
+                                 .lazily_compute_pseudo_element_style(&element, &pseudo,
+                                                                      &per_restyle_context, parent)
+                                 .map_or_else(parent_or_null, Helpers::from)
+                }
+                process_post_restyle_tasks(pres_context, post_restyle_task_receiver);
+                result
             })
         }
         PseudoElementCascadeType::Precomputed => {

@@ -13,7 +13,7 @@ use restyle_damage::RestyleDamage;
 use std::sync::Arc;
 use string_cache::{Atom, Namespace};
 use style::computed_values::display;
-use style::context::SharedStyleContext;
+use style::context::{PerRestyleContext, SharedStyleContext};
 use style::dom::OpaqueNode;
 use style::dom::{PresentationalHintsSynthetizer, TNode};
 use style::properties::ServoComputedValues;
@@ -213,6 +213,7 @@ pub trait ThreadSafeLayoutNode: Clone + Copy + Sized + PartialEq {
                             let new_style =
                                 context.stylist
                                        .precomputed_values_for_pseudo(&style_pseudo,
+                                                                      &PerRestyleContext::default(),
                                                                       data.style_data.style.as_ref());
                             data.style_data.per_pseudo
                                 .insert(style_pseudo.clone(), new_style.unwrap());
@@ -231,6 +232,7 @@ pub trait ThreadSafeLayoutNode: Clone + Copy + Sized + PartialEq {
                                        .lazily_compute_pseudo_element_style(
                                            &self.as_element(),
                                            &style_pseudo,
+                                           &PerRestyleContext::default(),
                                            data.style_data.style.as_ref().unwrap());
                             data.style_data.per_pseudo
                                 .insert(style_pseudo.clone(), new_style.unwrap());

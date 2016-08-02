@@ -8,6 +8,7 @@
 //! [meta]: https://drafts.csswg.org/css-device-adapt/#viewport-meta
 
 use app_units::Au;
+use context::PerRestyleContext;
 use cssparser::ToCss;
 use cssparser::{AtRuleParser, DeclarationListParser, DeclarationParser, Parser, parse_important};
 use euclid::scale_factor::ScaleFactor;
@@ -643,10 +644,16 @@ impl MaybeNew for ViewportConstraints {
                                            Au::from_f32_px(initial_viewport.height.get()));
 
 
+        // The Context is only used for computing lengths down to absolute px
+        // values, so no need to pass in a usable post_restyle_task_sender for
+        // geckolib.
+        let per_restyle_context = PerRestyleContext::default();
+
         let context = Context {
             is_root_element: false,
             viewport_size: initial_viewport,
             inherited_style: ComputedValues::initial_values(),
+            per_restyle_context: &per_restyle_context,
             style: ComputedValues::initial_values().clone(),
         };
 

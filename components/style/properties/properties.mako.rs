@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 use app_units::Au;
 #[cfg(feature = "servo")] use cssparser::{Color as CSSParserColor, RGBA};
+use context::PerRestyleContext;
 use cssparser::{Parser, AtRuleParser, DeclarationParser, Delimiter,
                 DeclarationListParser, parse_important, ToCss, TokenSerializationType};
 use error_reporting::ParseErrorReporter;
@@ -1622,12 +1623,14 @@ fn cascade_with_cached_declarations(
         parent_style: &ComputedValues,
         cached_style: &ComputedValues,
         custom_properties: Option<Arc<::custom_properties::ComputedValuesMap>>,
+        per_restyle_context: &PerRestyleContext,
         mut error_reporter: StdBox<ParseErrorReporter + Send>)
         -> ComputedValues {
     let mut context = computed::Context {
         is_root_element: false,
         viewport_size: viewport_size,
         inherited_style: parent_style,
+        per_restyle_context: per_restyle_context,
         style: ComputedValues::new(
             custom_properties,
             shareable,
@@ -1668,15 +1671,27 @@ fn cascade_with_cached_declarations(
                                             DeclaredValue::Value(ref specified_value)
                                             => {
                                                 let computed = specified_value.to_computed_value(&context);
+                                                % if product == "gecko" and property.gecko_setters_take_context:
+                                                context.mutate_style().mutate_${style_struct.name_lower}()
+                                                       .set_${property.ident}(computed,
+                                                                              context.per_restyle_context);
+                                                % else:
                                                 context.mutate_style().mutate_${style_struct.name_lower}()
                                                        .set_${property.ident}(computed);
+                                                % endif
                                             },
                                             DeclaredValue::Initial
                                             => {
                                                 // FIXME(bholley): We may want set_X_to_initial_value() here.
                                                 let initial = longhands::${property.ident}::get_initial_value();
+                                                % if product == "gecko" and property.gecko_setters_take_context:
+                                                context.mutate_style().mutate_${style_struct.name_lower}()
+                                                       .set_${property.ident}(initial,
+                                                                              context.per_restyle_context);
+                                                % else:
                                                 context.mutate_style().mutate_${style_struct.name_lower}()
                                                        .set_${property.ident}(initial);
+                                                % endif
                                             },
                                             DeclaredValue::Inherit => {
                                                 // This is a bit slow, but this is rare so it shouldn't
@@ -1684,8 +1699,14 @@ fn cascade_with_cached_declarations(
                                                 //
                                                 // FIXME: is it still?
                                                 let inherited_struct = parent_style.get_${style_struct.ident}();
+                                                % if product == "gecko" and property.gecko_setters_take_context:
+                                                context.mutate_style().mutate_${style_struct.name_lower}()
+                                                       .copy_${property.ident}_from(inherited_struct,
+                                                                                    context.per_restyle_context);
+                                                % else:
                                                 context.mutate_style().mutate_${style_struct.name_lower}()
                                                        .copy_${property.ident}_from(inherited_struct);
+                                                % endif
                                             }
                                             DeclaredValue::WithVariables { .. } => unreachable!()
                                         }, &mut error_reporter
@@ -1757,6 +1778,7 @@ pub fn cascade(viewport_size: Size2D<Au>,
                shareable: bool,
                parent_style: Option<<&ComputedValues>,
                cached_style: Option<<&ComputedValues>,
+               per_restyle_context: &PerRestyleContext,
                mut error_reporter: StdBox<ParseErrorReporter + Send>)
                -> (ComputedValues, bool) {
     let initial_values = ComputedValues::initial_values();
@@ -1791,6 +1813,7 @@ pub fn cascade(viewport_size: Size2D<Au>,
                                                      parent_style,
                                                      cached_style,
                                                      custom_properties,
+                                                     per_restyle_context,
                                                      error_reporter);
         return (style, false)
     }
@@ -1799,6 +1822,7 @@ pub fn cascade(viewport_size: Size2D<Au>,
         is_root_element: is_root_element,
         viewport_size: viewport_size,
         inherited_style: inherited_style,
+        per_restyle_context: per_restyle_context,
         style: ComputedValues::new(
             custom_properties,
             shareable,

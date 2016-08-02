@@ -4,7 +4,7 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use style::context::{LocalStyleContext, StyleContext, SharedStyleContext};
+use style::context::{LocalStyleContext, PerRestyleContext, StyleContext, SharedStyleContext};
 
 thread_local!(static LOCAL_CONTEXT_KEY: RefCell<Option<Rc<LocalStyleContext>>> = RefCell::new(None));
 
@@ -28,14 +28,18 @@ fn create_or_get_local_context(shared: &SharedStyleContext) -> Rc<LocalStyleCont
 pub struct StandaloneStyleContext<'a> {
     pub shared: &'a SharedStyleContext,
     cached_local_context: Rc<LocalStyleContext>,
+    pub per_restyle_context: PerRestyleContext,
 }
 
 impl<'a> StandaloneStyleContext<'a> {
     pub fn new(shared: &'a SharedStyleContext) -> Self {
         let local_context = create_or_get_local_context(shared);
+        let per_restyle_context =
+            PerRestyleContext::new(&shared.local_context_creation_data.lock().unwrap());
         StandaloneStyleContext {
             shared: shared,
             cached_local_context: local_context,
+            per_restyle_context: per_restyle_context,
         }
     }
 }
@@ -47,5 +51,9 @@ impl<'a> StyleContext<'a> for StandaloneStyleContext<'a> {
 
     fn local_context(&self) -> &LocalStyleContext {
         &self.cached_local_context
+    }
+
+    fn per_restyle_context(&self) -> &PerRestyleContext {
+        &self.per_restyle_context
     }
 }

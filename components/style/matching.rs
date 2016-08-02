@@ -438,6 +438,7 @@ trait PrivateMatchMethods: TNode {
     {
         let mut cacheable = true;
         let shared_context = context.shared_context();
+        let per_restyle_context = context.per_restyle_context();
         if animate_properties {
             cacheable = !self.update_animations_for_cascade(shared_context,
                                                             &mut old_style) && cacheable;
@@ -456,6 +457,7 @@ trait PrivateMatchMethods: TNode {
                         shareable,
                         Some(&***parent_style),
                         cached_computed_values,
+                        per_restyle_context,
                         shared_context.error_reporter.clone())
             }
             None => {
@@ -464,6 +466,7 @@ trait PrivateMatchMethods: TNode {
                         shareable,
                         None,
                         None,
+                        per_restyle_context,
                         shared_context.error_reporter.clone())
             }
         };

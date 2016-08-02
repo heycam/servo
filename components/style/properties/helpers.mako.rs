@@ -203,8 +203,14 @@
                         declared_value, &custom_props, |value| match *value {
                             DeclaredValue::Value(ref specified_value) => {
                                 let computed = specified_value.to_computed_value(context);
+                                % if product == "gecko" and property.gecko_setters_take_context:
+                                context.mutate_style().mutate_${data.current_style_struct.name_lower}()
+                                                      .set_${property.ident}(computed,
+                                                                             context.per_restyle_context);
+                                % else:
                                 context.mutate_style().mutate_${data.current_style_struct.name_lower}()
                                                       .set_${property.ident}(computed);
+                                % endif
                             }
                             DeclaredValue::WithVariables { .. } => unreachable!(),
                             DeclaredValue::Initial => {
@@ -212,8 +218,14 @@
                                 // set_*(get_initial_value());
                                 let initial_struct = ComputedValues::initial_values()
                                                       .get_${data.current_style_struct.name_lower}();
+                                % if product == "gecko" and property.gecko_setters_take_context:
+                                context.mutate_style().mutate_${data.current_style_struct.name_lower}()
+                                                      .copy_${property.ident}_from(initial_struct,
+                                                                                   context.per_restyle_context);
+                                % else:
                                 context.mutate_style().mutate_${data.current_style_struct.name_lower}()
                                                       .copy_${property.ident}_from(initial_struct);
+                                % endif
                             },
                             DeclaredValue::Inherit => {
                                 // This is a bit slow, but this is rare so it shouldn't
@@ -223,8 +235,14 @@
                                 *cacheable = false;
                                 let inherited_struct =
                                     inherited_style.get_${data.current_style_struct.name_lower}();
+                                % if product == "gecko" and property.gecko_setters_take_context:
+                                context.mutate_style().mutate_${data.current_style_struct.name_lower}()
+                                       .copy_${property.ident}_from(inherited_struct,
+                                                                    context.per_restyle_context);
+                                % else:
                                 context.mutate_style().mutate_${data.current_style_struct.name_lower}()
                                        .copy_${property.ident}_from(inherited_struct);
+                                % endif
                             }
                         }, error_reporter
                     );

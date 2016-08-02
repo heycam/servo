@@ -24,7 +24,7 @@ use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, RwLock};
-use style::context::{LocalStyleContext, StyleContext, SharedStyleContext};
+use style::context::{LocalStyleContext, PerRestyleContext, StyleContext, SharedStyleContext};
 use url::Url;
 use util::opts;
 
@@ -99,6 +99,7 @@ pub struct SharedLayoutContext {
 pub struct LayoutContext<'a> {
     pub shared: &'a SharedLayoutContext,
     cached_local_layout_context: Rc<LocalLayoutContext>,
+    per_restyle_context: PerRestyleContext,
 }
 
 impl<'a> StyleContext<'a> for LayoutContext<'a> {
@@ -109,15 +110,20 @@ impl<'a> StyleContext<'a> for LayoutContext<'a> {
     fn local_context(&self) -> &LocalStyleContext {
         &self.cached_local_layout_context.style_context
     }
+
+    fn per_restyle_context(&self) -> &PerRestyleContext {
+        &self.per_restyle_context
+    }
 }
 
 impl<'a> LayoutContext<'a> {
     pub fn new(shared_layout_context: &'a SharedLayoutContext) -> LayoutContext<'a> {
         let local_context = create_or_get_local_context(shared_layout_context);
-
         LayoutContext {
             shared: shared_layout_context,
             cached_local_layout_context: local_context,
+            // Only geckolib needs a meaningful per_restyle_context.
+            per_restyle_context: PerRestyleContext::default(),
         }
     }
 

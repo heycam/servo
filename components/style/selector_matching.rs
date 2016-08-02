@@ -4,6 +4,7 @@
 
 //! Selector matching.
 
+use context::PerRestyleContext;
 use dom::PresentationalHintsSynthetizer;
 use element_state::*;
 use error_reporting::StdoutErrorReporter;
@@ -221,6 +222,7 @@ impl Stylist {
     /// universal rules and applying them.
     pub fn precomputed_values_for_pseudo(&self,
                                          pseudo: &PseudoElement,
+                                         per_restyle_context: &PerRestyleContext,
                                          parent: Option<&Arc<ComputedValues>>)
                                          -> Option<Arc<ComputedValues>> {
         debug_assert!(TheSelectorImpl::pseudo_element_cascade_type(pseudo).is_precomputed());
@@ -230,6 +232,7 @@ impl Stylist {
                                     &declarations, false,
                                     parent.map(|p| &**p),
                                     None,
+                                    per_restyle_context,
                                     Box::new(StdoutErrorReporter));
             Some(Arc::new(computed))
         } else {
@@ -240,6 +243,7 @@ impl Stylist {
     pub fn lazily_compute_pseudo_element_style<E>(&self,
                                                   element: &E,
                                                   pseudo: &PseudoElement,
+                                                  per_restyle_context: &PerRestyleContext,
                                                   parent: &Arc<ComputedValues>)
                                                   -> Option<Arc<ComputedValues>>
                                                   where E: Element<Impl=TheSelectorImpl> +
@@ -263,6 +267,7 @@ impl Stylist {
             properties::cascade(self.device.au_viewport_size(),
                                 &declarations, false,
                                 Some(&**parent), None,
+                                per_restyle_context,
                                 Box::new(StdoutErrorReporter));
         Some(Arc::new(computed))
     }
