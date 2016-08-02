@@ -188,6 +188,11 @@ pub const NS_ERROR_MODULE_BASE_OFFSET: ::std::os::raw::c_uint = 69;
 pub const MOZ_STRING_WITH_OBSOLETE_API: ::std::os::raw::c_uint = 1;
 pub const NSID_LENGTH: ::std::os::raw::c_uint = 39;
 pub const NS_NUMBER_OF_FLAGS_IN_REFCNT: ::std::os::raw::c_uint = 2;
+pub const _STL_PAIR_H: ::std::os::raw::c_uint = 1;
+pub const _GLIBCXX_UTILITY: ::std::os::raw::c_uint = 1;
+pub const __cpp_lib_tuples_by_type: ::std::os::raw::c_uint = 201304;
+pub const __cpp_lib_exchange_function: ::std::os::raw::c_uint = 201304;
+pub const __cpp_lib_integer_sequence: ::std::os::raw::c_uint = 201304;
 pub const NS_EVENT_STATE_HIGHEST_SERVO_BIT: ::std::os::raw::c_uint = 6;
 pub const DOM_USER_DATA: ::std::os::raw::c_uint = 1;
 pub const SMIL_MAPPED_ATTR_ANIMVAL: ::std::os::raw::c_uint = 2;
@@ -2724,6 +2729,12 @@ impl ::std::clone::Clone for nsIExpandedPrincipal {
     fn clone(&self) -> Self { *self }
 }
 #[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _Make_integer_sequence<_Tp, _ISeq> {
+    pub _phantom0: ::std::marker::PhantomData<_Tp>,
+    pub _phantom1: ::std::marker::PhantomData<_ISeq>,
+}
+#[repr(C)]
 #[derive(Debug, Copy)]
 pub struct nsIURI {
     pub _base: nsISupports,
@@ -2775,7 +2786,7 @@ impl ::std::clone::Clone for nsIRequest {
 #[repr(C)]
 #[derive(Debug, Copy)]
 pub struct EventStates {
-    pub mStates: ::std::os::raw::c_ulonglong,
+    pub mStates: ::std::os::raw::c_ulong,
 }
 impl ::std::clone::Clone for EventStates {
     fn clone(&self) -> Self { *self }
@@ -2905,7 +2916,7 @@ fn bindgen_test_layout_nsMutationGuard() {
 extern "C" {
     #[link_name = "_ZN15nsMutationGuard11sGenerationE"]
     pub static mut nsMutationGuard_consts_sGeneration:
-               ::std::os::raw::c_ulonglong;
+               ::std::os::raw::c_ulong;
 }
 pub type Float = f32;
 #[repr(i8)]
@@ -4538,11 +4549,11 @@ fn bindgen_test_layout_URLValue() {
 }
 #[repr(C)]
 pub struct ImageValue {
-    pub _bindgen_opaque_blob: [u64; 12usize],
+    pub _bindgen_opaque_blob: [u64; 11usize],
 }
 #[test]
 fn bindgen_test_layout_ImageValue() {
-    assert_eq!(::std::mem::size_of::<ImageValue>() , 96usize);
+    assert_eq!(::std::mem::size_of::<ImageValue>() , 88usize);
     assert_eq!(::std::mem::align_of::<ImageValue>() , 8usize);
 }
 #[repr(C)]
@@ -5402,6 +5413,23 @@ fn bindgen_test_layout_nsStyleGradient() {
     assert_eq!(::std::mem::size_of::<nsStyleGradient>() , 104usize);
     assert_eq!(::std::mem::align_of::<nsStyleGradient>() , 8usize);
 }
+/**
+ * A wrapper for an imgRequestProxy that can be created off the main
+ * thread, but which must be resolved with the data to produce an
+ * imgRequestProxy on the main thread later if it is to be useful.
+ */
+#[repr(C)]
+pub struct nsStyleImageRequest {
+    pub mRefCnt: ThreadSafeAutoRefCnt,
+    pub mRequestProxy: nsMainThreadPtrHandle<imgRequestProxy>,
+    pub mImageValue: u64,
+    pub mTrackImageIsPending: bool,
+}
+#[test]
+fn bindgen_test_layout_nsStyleImageRequest() {
+    assert_eq!(::std::mem::size_of::<nsStyleImageRequest>() , 32usize);
+    assert_eq!(::std::mem::align_of::<nsStyleImageRequest>() , 8usize);
+}
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum nsStyleImageType {
@@ -5441,7 +5469,7 @@ pub struct nsStyleImage {
 #[repr(C)]
 #[derive(Debug, Copy)]
 pub struct nsStyleImage_nsStyleStruct_h_unnamed_21 {
-    pub mImage: __BindgenUnionField<*mut imgRequestProxy>,
+    pub mImage: __BindgenUnionField<*mut nsStyleImageRequest>,
     pub mGradient: __BindgenUnionField<*mut nsStyleGradient>,
     pub mElementId: __BindgenUnionField<*mut ::std::os::raw::c_ushort>,
     pub _bindgen_data_: u64,

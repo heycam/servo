@@ -5,6 +5,7 @@ pub enum nsINode {}
 pub enum nsIDocument {}
 pub enum nsIPrincipal {}
 pub enum nsIURI {}
+pub enum nsPresContext {}
 use structs::nsStyleFont;
 unsafe impl Send for nsStyleFont {}
 unsafe impl Sync for nsStyleFont {}
@@ -148,6 +149,10 @@ use structs::nsStyleContext;
 unsafe impl Send for nsStyleContext {}
 unsafe impl Sync for nsStyleContext {}
 impl HeapSizeOf for nsStyleContext { fn heap_size_of_children(&self) -> usize { 0 } }
+use structs::nsStyleImageRequest;
+unsafe impl Send for nsStyleImageRequest {}
+unsafe impl Sync for nsStyleImageRequest {}
+impl HeapSizeOf for nsStyleImageRequest { fn heap_size_of_children(&self) -> usize { 0 } }
 
 pub type RawGeckoNode = nsINode;
 pub enum Element { }
@@ -162,6 +167,16 @@ pub enum ServoDeclarationBlock { }
 pub type ThreadSafePrincipalHolder = nsMainThreadPtrHolder<nsIPrincipal>;
 pub type ThreadSafeURIHolder = nsMainThreadPtrHolder<nsIURI>;
 extern "C" {
+    pub fn Gecko_AddRefPrincipalArbitraryThread(aPtr:
+                                                    *mut ThreadSafePrincipalHolder);
+    pub fn Gecko_ReleasePrincipalArbitraryThread(aPtr:
+                                                     *mut ThreadSafePrincipalHolder);
+    pub fn Gecko_AddRefURIArbitraryThread(aPtr: *mut ThreadSafeURIHolder);
+    pub fn Gecko_ReleaseURIArbitraryThread(aPtr: *mut ThreadSafeURIHolder);
+    pub fn Gecko_AddRefStyleImageRequestArbitraryThread(aPtr:
+                                                            *mut nsStyleImageRequest);
+    pub fn Gecko_ReleaseStyleImageRequestArbitraryThread(aPtr:
+                                                             *mut nsStyleImageRequest);
     pub fn Gecko_ChildrenCount(node: *mut RawGeckoNode) -> u32;
     pub fn Gecko_NodeIsElement(node: *mut RawGeckoNode) -> bool;
     pub fn Gecko_GetParentNode(node: *mut RawGeckoNode) -> *mut RawGeckoNode;
@@ -277,17 +292,17 @@ extern "C" {
     pub fn Gecko_SetNullImageValue(image: *mut nsStyleImage);
     pub fn Gecko_SetGradientImageValue(image: *mut nsStyleImage,
                                        gradient: *mut nsStyleGradient);
+    pub fn Gecko_SetURLImageValue(image: *mut nsStyleImage,
+                                  url_bytes: *const u8, url_length: u32,
+                                  base_uri: *mut ThreadSafeURIHolder,
+                                  referrer: *mut ThreadSafeURIHolder,
+                                  principal: *mut ThreadSafePrincipalHolder)
+     -> *mut nsStyleImageRequest;
     pub fn Gecko_CopyImageValueFrom(image: *mut nsStyleImage,
                                     other: *const nsStyleImage);
     pub fn Gecko_CreateGradient(shape: u8, size: u8, repeating: bool,
                                 legacy_syntax: bool, stops: u32)
      -> *mut nsStyleGradient;
-    pub fn Gecko_AddRefPrincipalArbitraryThread(aPtr:
-                                                    *mut ThreadSafePrincipalHolder);
-    pub fn Gecko_ReleasePrincipalArbitraryThread(aPtr:
-                                                     *mut ThreadSafePrincipalHolder);
-    pub fn Gecko_AddRefURIArbitraryThread(aPtr: *mut ThreadSafeURIHolder);
-    pub fn Gecko_ReleaseURIArbitraryThread(aPtr: *mut ThreadSafeURIHolder);
     pub fn Gecko_SetMozBinding(style_struct: *mut nsStyleDisplay,
                                string_bytes: *const u8, string_length: u32,
                                base_uri: *mut ThreadSafeURIHolder,
@@ -318,6 +333,10 @@ extern "C" {
                                         calc: CalcValue);
     pub fn Gecko_AddRefCalcArbitraryThread(aPtr: *mut Calc);
     pub fn Gecko_ReleaseCalcArbitraryThread(aPtr: *mut Calc);
+    pub fn Gecko_ResolveImage(image: *mut nsStyleImageRequest,
+                              pres_context: *mut nsPresContext);
+    pub fn Gecko_TrackImages(pres_context: *mut nsPresContext,
+                             image_layers: *mut nsStyleImageLayers);
     pub fn Servo_StylesheetFromUTF8Bytes(bytes: *const u8, length: u32,
                                          parsing_mode: SheetParsingMode,
                                          base_bytes: *const u8,
@@ -357,12 +376,16 @@ extern "C" {
                              value: *const u8, value_length: u32) -> bool;
     pub fn Servo_GetComputedValues(node: *mut RawGeckoNode)
      -> *mut ServoComputedValues;
-    pub fn Servo_GetComputedValuesForAnonymousBox(parentStyleOrNull:
+    pub fn Servo_GetComputedValuesForAnonymousBox(pres_context:
+                                                      *mut nsPresContext,
+                                                  parentStyleOrNull:
                                                       *mut ServoComputedValues,
                                                   pseudoTag: *mut nsIAtom,
                                                   set: *mut RawServoStyleSet)
      -> *mut ServoComputedValues;
-    pub fn Servo_GetComputedValuesForPseudoElement(parent_style:
+    pub fn Servo_GetComputedValuesForPseudoElement(pres_context:
+                                                       *mut nsPresContext,
+                                                   parent_style:
                                                        *mut ServoComputedValues,
                                                    match_element:
                                                        *mut RawGeckoElement,
@@ -376,9 +399,8 @@ extern "C" {
     pub fn Servo_ReleaseComputedValues(arg1: *mut ServoComputedValues);
     pub fn Servo_Initialize();
     pub fn Servo_Shutdown();
-    pub fn Servo_RestyleDocument(doc: *mut RawGeckoDocument,
-                                 set: *mut RawServoStyleSet);
-    pub fn Servo_RestyleSubtree(node: *mut RawGeckoNode,
+    pub fn Servo_RestyleSubtree(pres_context: *mut nsPresContext,
+                                node: *mut RawGeckoNode,
                                 set: *mut RawServoStyleSet);
     pub fn Servo_ComputeRestyleHint(element: *mut RawGeckoElement,
                                     snapshot: *mut ServoElementSnapshot,
