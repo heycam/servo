@@ -5,6 +5,7 @@
 use bindings::*;
 use heapsize::HeapSizeOf;
 use std::fmt::{self, Debug};
+use structs::nsStyleImageRequest;
 
 // Defines an Arc-like type that manages a refcounted Gecko object stored
 // in a ThreadSafeFooHolder smart pointer.  Used in tandem with the
@@ -60,3 +61,6 @@ define_arc!(GeckoArcPrincipal, Principal, ThreadSafePrincipalHolder,
             Gecko_AddRefPrincipalArbitraryThread, Gecko_ReleasePrincipalArbitraryThread);
 define_arc!(GeckoArcURI, URI, ThreadSafeURIHolder,
             Gecko_AddRefURIArbitraryThread, Gecko_ReleaseURIArbitraryThread);
+define_arc!(GeckoArcStyleImageRequest, StyleImageRequest, nsStyleImageRequest,
+            Gecko_AddRefStyleImageRequestArbitraryThread,
+            Gecko_ReleaseStyleImageRequestArbitraryThread);

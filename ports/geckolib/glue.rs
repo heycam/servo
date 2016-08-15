@@ -8,6 +8,7 @@ use app_units::Au;
 use data::{NUM_THREADS, PerDocumentStyleData};
 use env_logger;
 use euclid::Size2D;
+use gecko_bindings::bindings::nsPresContext;
 use gecko_bindings::bindings::{RawGeckoDocument, RawGeckoElement, RawGeckoNode};
 use gecko_bindings::bindings::{RawServoStyleSet, RawServoStyleSheet, ServoComputedValues};
 use gecko_bindings::bindings::{ServoDeclarationBlock, ServoNodeData, ThreadSafePrincipalHolder};
@@ -30,6 +31,7 @@ use style::dom::{TDocument, TElement, TNode};
 use style::error_reporting::StdoutErrorReporter;
 use style::gecko_glue::ArcHelpers;
 use style::gecko_selector_impl::{GeckoSelectorImpl, PseudoElement};
+use style::gecko_task::SendRawPtr;
 use style::parallel;
 use style::parser::ParserContextExtraData;
 use style::properties::{ComputedValues, PropertyDeclarationBlock, parse_one_declaration};
@@ -91,8 +93,28 @@ pub extern "C" fn Servo_Shutdown() -> () {
 
 fn process_post_restyle_tasks(pres_context: *mut nsPresContext,
                               receiver: Receiver<PostRestyleTask>) {
-    while let Ok(_task) = receiver.recv() {
-        // No tasks to handle yet.
+    use gecko_bindings::bindings::{Gecko_ResolveImage, Gecko_TrackImages};
+
+    while let Ok(task) = receiver.recv() {
+        match task {
+            PostRestyleTask::ResolveImage(image, url, extra_data) => {
+                let url = url.as_str();
+                unsafe {
+                    Gecko_ResolveImage(pres_context,
+                                       image.as_raw(),
+                                       url.as_ptr(),
+                                       url.len() as u32,
+                                       extra_data.base.as_raw(),
+                                       extra_data.referrer.as_raw(),
+                                       extra_data.principal.as_raw());
+                }
+            },
+            PostRestyleTask::TrackImages(SendRawPtr(image_layers)) => {
+                unsafe {
+                    Gecko_TrackImages(pres_context, image_layers);
+                }
+            },
+        }
     }
 }
 

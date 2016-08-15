@@ -84,6 +84,7 @@ pub mod font_face;
 #[cfg(feature = "gecko")] pub mod gecko_conversions;
 #[cfg(feature = "gecko")] pub mod gecko_glue;
 #[cfg(feature = "gecko")] pub mod gecko_selector_impl;
+#[allow(unsafe_code)]
 #[cfg(feature = "gecko")] pub mod gecko_task;
 #[cfg(feature = "gecko")] pub mod gecko_values;
 pub mod keyframes;

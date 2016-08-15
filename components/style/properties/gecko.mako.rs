@@ -10,6 +10,7 @@
 %>
 
 use app_units::Au;
+use context::PerRestyleContext;
 use custom_properties::ComputedValuesMap;
 % for style_struct in data.style_structs:
 use gecko_bindings::structs::${style_struct.gecko_ffi_name};
@@ -24,10 +25,13 @@ use gecko_bindings::bindings::{Gecko_EnsureImageLayersLength, Gecko_CreateGradie
 use gecko_bindings::bindings::{Gecko_CopyImageValueFrom, Gecko_CopyFontFamilyFrom};
 use gecko_bindings::bindings::{Gecko_FontFamilyList_AppendGeneric, Gecko_FontFamilyList_AppendNamed};
 use gecko_bindings::bindings::{Gecko_FontFamilyList_Clear, Gecko_InitializeImageLayer};
+use gecko_bindings::bindings::Gecko_SetURLImageValue;
 use gecko_bindings::bindings;
+use gecko_bindings::ptr::GeckoArcStyleImageRequest;
 use gecko_bindings::structs;
 use gecko_bindings::sugar::ns_style_coord::{CoordDataValue, CoordData, CoordDataMut};
 use gecko_glue::ArcHelpers;
+use gecko_task::{PostRestyleTask, SendRawPtr};
 use gecko_values::{StyleCoordHelpers, GeckoStyleCoordConvertible, convert_nscolor_to_rgba};
 use gecko_values::convert_rgba_to_nscolor;
 use gecko_values::round_border_to_device_pixels;
@@ -431,6 +435,9 @@ impl ${style_struct.gecko_struct_name} {
     }
     pub fn get_gecko(&self) -> &${style_struct.gecko_ffi_name} {
         &self.gecko
+    }
+    pub fn mut_gecko_raw(&mut self) -> *mut ${style_struct.gecko_ffi_name} {
+        &mut self.gecko
     }
 }
 impl Drop for ${style_struct.gecko_struct_name} {
@@ -1057,14 +1064,16 @@ fn static_assert() {
         self.gecko.mImage.mPositionYCount = 1;
     }
 
-    pub fn copy_background_image_from(&mut self, other: &Self) {
+    pub fn copy_background_image_from(&mut self, other: &Self,
+                                      per_restyle_context: &PerRestyleContext) {
         unsafe {
             Gecko_CopyImageValueFrom(&mut self.gecko.mImage.mLayers.mFirstElement.mImage,
                                      &other.gecko.mImage.mLayers.mFirstElement.mImage);
         }
     }
 
-    pub fn set_background_image(&mut self, images: longhands::background_image::computed_value::T) {
+    pub fn set_background_image(&mut self, images: longhands::background_image::computed_value::T,
+                                per_restyle_context: &PerRestyleContext) {
         use gecko_bindings::structs::nsStyleImageLayers_LayerType as LayerType;
         use gecko_bindings::structs::{NS_STYLE_GRADIENT_SHAPE_LINEAR, NS_STYLE_GRADIENT_SIZE_FARTHEST_CORNER};
         use gecko_bindings::structs::nsStyleCoord;
@@ -1072,6 +1081,7 @@ fn static_assert() {
         use values::specified::AngleOrCorner;
         use cssparser::Color as CSSColor;
 
+        println!("set_background_image");
         unsafe {
             // Prevent leaking of the last element we did set
             for image in &mut self.gecko.mImage.mLayers {
@@ -1088,6 +1098,7 @@ fn static_assert() {
 
         // TODO: pre-grow the nsTArray to the right capacity
         // otherwise the below code won't work
+        let mut has_images = false;
         for (image, geckoimage) in images.0.into_iter().zip(self.gecko.mImage.mLayers.iter_mut()) {
             if let Some(image) = image.0 {
                 match image {
@@ -1145,17 +1156,24 @@ fn static_assert() {
                             Gecko_SetGradientImageValue(&mut geckoimage.mImage, gecko_gradient);
                         }
                     },
-                    Image::Url(..) => {
-                        // let utf8_bytes = url.as_bytes();
-                        // Gecko_SetUrlImageValue(&mut self.gecko.mImage.mLayers.mFirstElement,
-                        //                        utf8_bytes.as_ptr() as *const _,
-                        //                        utf8_bytes.len());
-                        warn!("stylo: imgRequestProxies are not threadsafe in gecko, \
-                               background-image: url() not yet implemented");
+                    Image::Url(ref url, ref extra_data) => {
+                        let request = unsafe { Gecko_SetURLImageValue(&mut geckoimage.mImage) };
+                        debug_assert!(!request.is_null());
+                        println!("posting a task");
+                        per_restyle_context.post_restyle_task_sender().send(
+                                PostRestyleTask::ResolveImage(GeckoArcStyleImageRequest::new(request),
+                                                              url.clone(),
+                                                              extra_data.clone()));
+                        has_images = true;
                     }
                 }
             }
 
+        }
+
+        if has_images {
+            per_restyle_context.post_restyle_task_sender().send(
+                    PostRestyleTask::TrackImages(SendRawPtr(&mut self.gecko.mImage)));
         }
     }
 </%self:impl_trait>

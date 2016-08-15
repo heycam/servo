@@ -22,6 +22,8 @@ use context::PerRestyleContext;
 use cssparser::{Parser, AtRuleParser, DeclarationParser, Delimiter,
                 DeclarationListParser, parse_important, ToCss, TokenSerializationType};
 use error_reporting::ParseErrorReporter;
+#[cfg(feature = "gecko")]
+pub use gecko_task::{PostRestyleTask, SendRawPtr};
 use url::Url;
 #[cfg(feature = "servo")] use euclid::side_offsets::SideOffsets2D;
 use euclid::size::Size2D;
