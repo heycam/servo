@@ -137,16 +137,6 @@ pub extern "C" fn Servo_RestyleSubtree(node: *mut RawGeckoNode,
 }
 
 #[no_mangle]
-pub extern "C" fn Servo_RestyleDocument(doc: *mut RawGeckoDocument, raw_data: *mut RawServoStyleSet) -> () {
-    let document = unsafe { GeckoDocument::from_raw(doc) };
-    let node = match document.root_node() {
-        Some(x) => x,
-        None => return,
-    };
-    restyle_subtree(node, raw_data);
-}
-
-#[no_mangle]
 pub extern "C" fn Servo_StyleWorkerThreadCount() -> u32 {
     *NUM_THREADS as u32
 }
