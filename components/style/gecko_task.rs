@@ -6,14 +6,12 @@
 
 use gecko_bindings::ptr::GeckoArcStyleImageRequest;
 use gecko_bindings::structs::nsStyleImageLayers;
-use url::Url;
-use values::specified::UrlExtraData;
 
 pub struct SendRawPtr<T>(pub *mut T);
 unsafe impl<T> Send for SendRawPtr<T> {}
 unsafe impl<T> Sync for SendRawPtr<T> {}
 
 pub enum PostRestyleTask {
-    ResolveImage(GeckoArcStyleImageRequest, Url, UrlExtraData),
+    ResolveImage(GeckoArcStyleImageRequest),
     TrackImages(SendRawPtr<nsStyleImageLayers>),
 }

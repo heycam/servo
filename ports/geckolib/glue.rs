@@ -97,16 +97,9 @@ fn process_post_restyle_tasks(pres_context: *mut nsPresContext,
 
     while let Ok(task) = receiver.recv() {
         match task {
-            PostRestyleTask::ResolveImage(image, url, extra_data) => {
-                let url = url.as_str();
+            PostRestyleTask::ResolveImage(image) => {
                 unsafe {
-                    Gecko_ResolveImage(pres_context,
-                                       image.as_raw(),
-                                       url.as_ptr(),
-                                       url.len() as u32,
-                                       extra_data.base.as_raw(),
-                                       extra_data.referrer.as_raw(),
-                                       extra_data.principal.as_raw());
+                    Gecko_ResolveImage(image.as_raw(), pres_context);
                 }
             },
             PostRestyleTask::TrackImages(SendRawPtr(image_layers)) => {

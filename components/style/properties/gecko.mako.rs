@@ -1065,7 +1065,7 @@ fn static_assert() {
     }
 
     pub fn copy_background_image_from(&mut self, other: &Self,
-                                      per_restyle_context: &PerRestyleContext) {
+                                      _per_restyle_context: &PerRestyleContext) {
         unsafe {
             Gecko_CopyImageValueFrom(&mut self.gecko.mImage.mLayers.mFirstElement.mImage,
                                      &other.gecko.mImage.mLayers.mFirstElement.mImage);
@@ -1157,13 +1157,18 @@ fn static_assert() {
                         }
                     },
                     Image::Url(ref url, ref extra_data) => {
-                        let request = unsafe { Gecko_SetURLImageValue(&mut geckoimage.mImage) };
+                        let request = unsafe {
+                            Gecko_SetURLImageValue(&mut geckoimage.mImage,
+                                                   url.as_str().as_ptr(),
+                                                   url.as_str().len() as u32,
+                                                   extra_data.base.as_raw(),
+                                                   extra_data.referrer.as_raw(),
+                                                   extra_data.principal.as_raw())
+                        };
                         debug_assert!(!request.is_null());
                         println!("posting a task");
-                        per_restyle_context.post_restyle_task_sender().send(
-                                PostRestyleTask::ResolveImage(GeckoArcStyleImageRequest::new(request),
-                                                              url.clone(),
-                                                              extra_data.clone()));
+                        let task = PostRestyleTask::ResolveImage(GeckoArcStyleImageRequest::new(request));
+                        per_restyle_context.post_restyle_task_sender().send(task).unwrap();
                         has_images = true;
                     }
                 }
@@ -1172,8 +1177,8 @@ fn static_assert() {
         }
 
         if has_images {
-            per_restyle_context.post_restyle_task_sender().send(
-                    PostRestyleTask::TrackImages(SendRawPtr(&mut self.gecko.mImage)));
+            let task = PostRestyleTask::TrackImages(SendRawPtr(&mut self.gecko.mImage));
+            per_restyle_context.post_restyle_task_sender().send(task).unwrap();
         }
     }
 </%self:impl_trait>
