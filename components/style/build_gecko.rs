@@ -407,6 +407,7 @@ mod bindings {
             "gfxSize",  // <- union { struct { T width; T height; }; T components[2] };
             "gfxSize_Super",  // Ditto.
             "mozilla::ErrorResult",  // Causes JSWhyMagic to be included & handled incorrectly.
+            "mozilla::binding_danger::TErrorResult",  // Dependency of ErrorResult.
             "mozilla::StyleAnimationValue",
             "StyleAnimationValue", // pulls in a whole bunch of stuff we don't need in the bindings
         ];
